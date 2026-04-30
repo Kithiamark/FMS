@@ -1,0 +1,21 @@
+{
+  "welcome": "Welcome back",
+  "today_milk": "Today's Milk",
+  "active_animals": "Active Animals",
+  "expenses_this_month": "Expenses (Month)",
+  "pending_alerts": "Pending Alerts",
+  "recent_activity": "Recent Activity",
+  "quick_actions": "Quick Actions",
+  "record_milk": "Record Milk",
+  "add_animal": "Add Animal",
+  "log_expense": "Log Expense",
+  "dashboard": "Dashboard",
+  "herd": "My Herd",
+  "dairy": "Dairy Records",
+  "financials": "Financials",
+  "insights": "AI Insights",
+  "alerts": "Alerts",
+  "settings": "Settings",
+  "logout": "Logout",
+  "switch_lang": "Swahili"
+}

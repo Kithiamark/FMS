@@ -1,4 +1,4 @@
-# FarmVista Farm Management System
+# Arvion Farm Management System
 
 A dairy farm management app for Kenyan farmers. It covers farmer login, herd records, milk production and usage, finance tracking, alerts, vet workflows, and local AI-style recommendations.
 
