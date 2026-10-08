@@ -16,10 +16,22 @@ class VetReviewSerializer(serializers.ModelSerializer):
 
 class VetListSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='user.full_name', read_only=True)
+    phone_number = serializers.CharField(source='user.phone_number', read_only=True)
+    connection_status = serializers.SerializerMethodField()
     
     class Meta:
         model = VetProfile
-        fields = ['id', 'name', 'profile_photo', 'average_rating', 'consultation_fee_kes', 'specialization', 'county', 'years_experience', 'is_verified']
+        fields = ['id', 'name', 'phone_number', 'profile_photo', 'average_rating', 'consultation_fee_kes', 'specialization', 'county', 'years_experience', 'is_verified', 'clinic_name', 'kvb_reg_no', 'emergency_available', 'connection_status']
+
+    def get_connection_status(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 'NONE'
+        farm = getattr(request.user, 'farm', None) or getattr(request.user, 'assigned_farm', None)
+        if not farm:
+            return 'NONE'
+        conn = VetFarmConnection.objects.filter(vet=obj, farm=farm).first()
+        return conn.status if conn else 'NONE'
 
 class VetProfileSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='user.full_name', read_only=True)

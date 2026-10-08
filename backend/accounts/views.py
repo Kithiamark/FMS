@@ -78,6 +78,25 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def perform_update(self, serializer):
+        if not self.request.user.is_superuser:
+            raise exceptions.PermissionDenied(
+                'Account details can only be modified by a Super Admin. Please submit an in-app support request.'
+            )
+        instance = serializer.save()
+        if instance.indemnity_agreed and not instance.indemnity_agreed_at:
+            instance.indemnity_agreed_at = timezone.now()
+            instance.save(update_fields=['indemnity_agreed_at'])
+        AuditLog.objects.create(
+            user=self.request.user,
+            farm=get_user_farm(self.request.user),
+            event_type=AuditLog.EventType.SECURITY,
+            action='PROFILE_UPDATED',
+            model_name='User',
+            object_id=str(instance.id),
+            metadata={'updated_by_superadmin': True}
+        )
+
 class RequestOTPView(views.APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -85,11 +104,13 @@ class RequestOTPView(views.APIView):
         serializer = OTPSerializer(data=request.data)
         if serializer.is_valid():
             phone = serializer.validated_data['phone_number']
-            otp = '123456'  # Testing mode. Replace with random OTP when SMS keys are configured.
+            import random
+            otp = f"{random.randint(100000, 999999)}"
             user = User.objects.filter(phone_number=phone).first()
+            expires_at = timezone.now() + timedelta(minutes=10)
             if user:
                 user.otp_hash = make_password(otp)
-                user.otp_expires_at = timezone.now() + timedelta(minutes=10)
+                user.otp_expires_at = expires_at
                 user.otp_attempts = 0
                 user.save(update_fields=['otp_hash', 'otp_expires_at', 'otp_attempts'])
             AuditLog.objects.create(
@@ -99,15 +120,24 @@ class RequestOTPView(views.APIView):
                 action='OTP_REQUESTED',
                 model_name='User',
                 object_id=str(user.id) if user else '',
-                metadata={'test_mode': True, 'phone_number': str(phone)},
+                metadata={
+                    'phone_number': str(phone),
+                    'otp_code': otp,
+                    'expires_at': expires_at.isoformat(),
+                },
             )
-            return Response({"message": "OTP sent successfully.", "test_mode_otp": otp}, status=status.HTTP_200_OK)
+            from django.conf import settings
+            response_payload = {"message": "OTP generated successfully."}
+            if getattr(settings, 'DEBUG', False):
+                response_payload["test_mode_otp"] = otp
+            return Response(response_payload, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class VerifyOTPView(views.APIView):
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request):
+        from rest_framework_simplejwt.tokens import RefreshToken
         serializer = OTPVerifySerializer(data=request.data)
         if serializer.is_valid():
             phone = serializer.validated_data['phone_number']
@@ -123,11 +153,27 @@ class VerifyOTPView(views.APIView):
                 user.otp_attempts += 1
                 user.save(update_fields=['otp_attempts'])
                 return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            update_fields = ['phone_verified', 'otp_hash', 'otp_expires_at', 'otp_attempts']
             user.phone_verified = True
             user.otp_hash = ''
             user.otp_expires_at = None
             user.otp_attempts = 0
-            user.save(update_fields=['phone_verified', 'otp_hash', 'otp_expires_at', 'otp_attempts'])
+
+            # If user provided password during onboarding, set it
+            new_password = serializer.validated_data.get('password')
+            if new_password:
+                user.set_password(new_password)
+                update_fields.append('password')
+
+            # If indemnity was accepted during onboarding
+            if serializer.validated_data.get('indemnity_agreed'):
+                user.indemnity_agreed = True
+                user.indemnity_agreed_at = timezone.now()
+                update_fields.extend(['indemnity_agreed', 'indemnity_agreed_at'])
+
+            user.save(update_fields=update_fields)
+
             AuditLog.objects.create(
                 user=user,
                 farm=get_user_farm(user),
@@ -135,8 +181,18 @@ class VerifyOTPView(views.APIView):
                 action='OTP_VERIFIED',
                 model_name='User',
                 object_id=str(user.id),
+                metadata={'indemnity_agreed': user.indemnity_agreed}
             )
-            return Response({"message": "OTP verified", "phone_verified": True}, status=status.HTTP_200_OK)
+
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "message": "OTP verified successfully.",
+                "phone_verified": True,
+                "indemnity_agreed": user.indemnity_agreed,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -154,15 +210,39 @@ class WorkerAccountViewSet(ModelViewSet):
         if self.request.user.role != User.Role.FARMER:
             raise exceptions.PermissionDenied('Only the head farmer can manage worker accounts.')
         farm = get_user_farm(self.request.user)
-        password = serializer.validated_data.pop('password', None) or 'ChangeMe123'
+        if not farm:
+            raise exceptions.ValidationError({'detail': 'No active farm associated with this farmer account.'})
+
+        import secrets
+        import string
+        raw_password = serializer.validated_data.pop('password', None)
+        if not raw_password:
+            alphabet = string.ascii_letters + string.digits
+            raw_password = ''.join(secrets.choice(alphabet) for _ in range(10))
+            is_temporary = True
+        else:
+            is_temporary = False
+
         worker = User.objects.create_user(
             phone_number=serializer.validated_data['phone_number'],
             full_name=serializer.validated_data['full_name'],
-            password=password,
+            password=raw_password,
             email=serializer.validated_data.get('email', ''),
             role=User.Role.FARM_WORKER,
             assigned_farm=farm,
+            accessible_modules=serializer.validated_data.get('accessible_modules', []),
+            national_id=serializer.validated_data.get('national_id', ''),
+            emergency_contact_name=serializer.validated_data.get('emergency_contact_name', ''),
+            emergency_contact_phone=serializer.validated_data.get('emergency_contact_phone', ''),
+            worker_specialty=serializer.validated_data.get('worker_specialty', ''),
+            indemnity_agreed=serializer.validated_data.get('indemnity_agreed', False),
+            indemnity_agreed_at=timezone.now() if serializer.validated_data.get('indemnity_agreed') else None,
         )
+        if is_temporary:
+            worker._temporary_password = raw_password
+
+        serializer.instance = worker
+
         AuditLog.objects.create(
             user=self.request.user,
             farm=farm,
@@ -170,10 +250,16 @@ class WorkerAccountViewSet(ModelViewSet):
             action='WORKER_CREATED',
             model_name='User',
             object_id=str(worker.id),
-            metadata={'worker_phone': str(worker.phone_number)},
+            metadata={'worker_phone': str(worker.phone_number), 'has_temp_password': is_temporary},
         )
 
     def perform_update(self, serializer):
+        if self.request.user.role != User.Role.FARMER:
+            raise exceptions.PermissionDenied('Only the head farmer can manage worker accounts.')
+        farm = get_user_farm(self.request.user)
+        worker = serializer.instance
+        if worker.assigned_farm != farm:
+            raise exceptions.PermissionDenied('You can only update workers assigned to your farm.')
         worker = serializer.save()
         password = serializer.validated_data.get('password')
         if password:
@@ -181,5 +267,10 @@ class WorkerAccountViewSet(ModelViewSet):
             worker.save(update_fields=['password'])
 
     def perform_destroy(self, instance):
+        if self.request.user.role != User.Role.FARMER:
+            raise exceptions.PermissionDenied('Only the head farmer can deactivate worker accounts.')
+        farm = get_user_farm(self.request.user)
+        if instance.assigned_farm != farm:
+            raise exceptions.PermissionDenied('You can only deactivate workers assigned to your farm.')
         instance.is_active = False
         instance.save(update_fields=['is_active'])

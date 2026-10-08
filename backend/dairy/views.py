@@ -1,3 +1,4 @@
+from core.utils import get_user_farm
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -20,12 +21,12 @@ class MilkRecordViewSet(viewsets.ModelViewSet):
             return MilkRecord.objects.all()
         # MilkRecord belongs to an Animal, and Animal belongs to a Farm. Keep this
         # filter in one place so list/detail/summary endpoints all enforce tenancy.
-        return MilkRecord.objects.filter(animal__farm=user.farm)
+        return MilkRecord.objects.filter(animal__farm=get_user_farm(user))
 
     def perform_create(self, serializer):
         # Defense in depth: serializers validate shape, this check validates ownership.
         animal = serializer.validated_data['animal']
-        if animal.farm != self.request.user.farm and self.request.user.role != 'ADMIN':
+        if animal.farm != get_user_farm(self.request.user) and self.request.user.role != 'ADMIN':
              raise PermissionError("Cannot add record for animal not in your farm")
         serializer.save(recorded_by=self.request.user)
 

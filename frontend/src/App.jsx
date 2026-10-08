@@ -14,11 +14,18 @@ import Messages from './pages/Messages';
 import Finance from './pages/Finance';
 import Alerts from './pages/Alerts';
 import Settings from './pages/Settings';
+import WorkerTasks from "./pages/WorkerTasks";
 import Community from './pages/Community';
 import VetDashboard from './pages/vet/VetDashboard';
 import VetFarms from './pages/vet/VetFarms';
 import VetFarmDetail from './pages/vet/VetFarmDetail';
 import VetMessages from './pages/vet/VetMessages';
+import VetRecords from './pages/vet/VetRecords';
+import VetVisits from './pages/vet/VetVisits';
+import VetConnections from './pages/vet/VetConnections';
+import VetProfile from './pages/vet/VetProfile';
+// Aggregator Imports
+import AggregatorDashboard from './pages/aggregator/AggregatorDashboard';
 // Admin Imports
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminVets from './pages/admin/AdminVets';
@@ -40,6 +47,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     if (allowedRoles && !allowedRoles.includes(user.role)) {
         if (user.role === 'ADMIN') return <Navigate to="/admin/dashboard" />;
         if (user.role === 'VETERINARIAN') return <Navigate to="/vet/dashboard" />;
+        if (user.role === 'AGGREGATOR') return <Navigate to="/aggregator/dashboard" />;
         return <Navigate to="/dashboard" />;
     }
     
@@ -99,6 +107,11 @@ const AppRoutes = () => {
                     <MainLayout><Settings /></MainLayout>
                 </ProtectedRoute>
             } />
+            <Route path="/tasks" element={
+                <ProtectedRoute allowedRoles={['FARMER', 'FARM_WORKER']}>
+                    <WorkerTasks />
+                </ProtectedRoute>
+            } />
             <Route path="/community" element={
                 <ProtectedRoute allowedRoles={['FARMER']}>
                     <MainLayout><Community /></MainLayout>
@@ -134,6 +147,33 @@ const AppRoutes = () => {
             <Route path="/vet/messages" element={
                 <ProtectedRoute allowedRoles={['VETERINARIAN']}>
                     <VetMessages />
+                </ProtectedRoute>
+            } />
+            <Route path="/vet/records" element={
+                <ProtectedRoute allowedRoles={['VETERINARIAN']}>
+                    <VetRecords />
+                </ProtectedRoute>
+            } />
+            <Route path="/vet/visits" element={
+                <ProtectedRoute allowedRoles={['VETERINARIAN']}>
+                    <VetVisits />
+                </ProtectedRoute>
+            } />
+            <Route path="/vet/connections" element={
+                <ProtectedRoute allowedRoles={['VETERINARIAN']}>
+                    <VetConnections />
+                </ProtectedRoute>
+            } />
+            <Route path="/vet/profile" element={
+                <ProtectedRoute allowedRoles={['VETERINARIAN']}>
+                    <VetProfile />
+                </ProtectedRoute>
+            } />
+
+            {/* Aggregator Routes */}
+            <Route path="/aggregator/dashboard" element={
+                <ProtectedRoute allowedRoles={['AGGREGATOR']}>
+                    <AggregatorDashboard />
                 </ProtectedRoute>
             } />
 

@@ -7,7 +7,9 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from datetime import timedelta
+from core.models import AuditLog
+from core.utils import get_user_farm
 from .models import SupportTicket, TicketMessage, Announcement, SystemLog
 from .serializers import SupportTicketSerializer, TicketMessageSerializer, SystemLogSerializer, VetProfileAdminSerializer
 from farms.models import Farm
@@ -30,12 +32,12 @@ class AdminStatsView(APIView):
         total_vets = User.objects.filter(role='VETERINARIAN').count()
         total_animals = Animal.objects.count()
         
-        active_subs = Subscription.objects.filter(is_active=True)
+        active_subs = Subscription.objects.filter(status='ACTIVE')
         sub_counts = {
-            'basic': active_subs.filter(plan_type='BASIC').count(),
-            'standard': active_subs.filter(plan_type='STANDARD').count(),
-            'premium': active_subs.filter(plan_type='PREMIUM').count(),
-            'enterprise': active_subs.filter(plan_type='ENTERPRISE').count(),
+            'basic': active_subs.filter(plan='Basic').count(),
+            'trial': active_subs.filter(plan='Trial').count(),
+            'premium': active_subs.filter(plan='Premium').count(),
+            'enterprise': active_subs.filter(plan='Enterprise').count(),
         }
 
         monthly_revenue = 0 
@@ -105,9 +107,18 @@ class AdminVetViewSet(viewsets.ModelViewSet):
         return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
 
 class SupportTicketViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdminUser]
-    queryset = SupportTicket.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = SupportTicketSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return SupportTicket.objects.all().order_by('-created_at')
+        return SupportTicket.objects.filter(raised_by=user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        farm = get_user_farm(self.request.user)
+        serializer.save(raised_by=self.request.user, farm=farm)
 
     @action(detail=True, methods=['post'])
     def messages(self, request, pk=None):
@@ -120,3 +131,37 @@ class SystemLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminUser]
     queryset = SystemLog.objects.all().order_by('-timestamp')
     serializer_class = SystemLogSerializer
+
+class RecentOTPsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        cutoff = timezone.now() - timedelta(minutes=15)
+        logs = AuditLog.objects.filter(
+            action='OTP_REQUESTED',
+            timestamp__gte=cutoff
+        ).order_by('-timestamp')[:25]
+
+        data = []
+        for log in logs:
+            meta = log.metadata or {}
+            phone = meta.get('phone_number')
+            otp = meta.get('otp_code')
+            expires_at = meta.get('expires_at')
+            if phone and otp:
+                is_expired = False
+                if expires_at:
+                    try:
+                        from datetime import datetime
+                        is_expired = datetime.fromisoformat(expires_at) < timezone.now()
+                    except Exception:
+                        is_expired = False
+                data.append({
+                    'id': log.id,
+                    'phone_number': phone,
+                    'otp_code': otp,
+                    'expires_at': expires_at,
+                    'created_at': log.timestamp.isoformat(),
+                    'is_expired': is_expired
+                })
+        return Response(data)

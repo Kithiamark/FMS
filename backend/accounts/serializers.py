@@ -35,8 +35,8 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ('id', 'phone_number', 'full_name', 'email', 'role', 'is_active', 'created_at', 'farm')
-        read_only_fields = ('id', 'role', 'created_at', 'phone_number')
+        fields = ('id', 'phone_number', 'full_name', 'email', 'role', 'is_active', 'created_at', 'farm', 'accessible_modules', 'national_id', 'alt_phone', 'emergency_contact_name', 'emergency_contact_phone', 'worker_specialty', 'indemnity_agreed', 'indemnity_agreed_at')
+        read_only_fields = ('id', 'role', 'created_at', 'phone_number', 'is_active', 'accessible_modules', 'indemnity_agreed', 'indemnity_agreed_at')
 
     def get_farm(self, obj):
         farm = get_user_farm(obj)
@@ -62,13 +62,19 @@ class OTPSerializer(serializers.Serializer):
 class OTPVerifySerializer(serializers.Serializer):
     phone_number = PhoneNumberField(region="KE")
     otp = serializers.CharField(max_length=6)
+    password = serializers.CharField(required=False, allow_blank=True, min_length=6)
+    indemnity_agreed = serializers.BooleanField(required=False, default=False)
 
 
 class WorkerAccountSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=False, min_length=6)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, min_length=8)
     phone_number = PhoneNumberField(region="KE")
+    temporary_password = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'phone_number', 'full_name', 'email', 'password', 'is_active', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = ('id', 'phone_number', 'full_name', 'email', 'password', 'temporary_password', 'is_active', 'accessible_modules', 'national_id', 'emergency_contact_name', 'emergency_contact_phone', 'worker_specialty', 'indemnity_agreed', 'created_at')
+        read_only_fields = ('id', 'created_at', 'temporary_password')
+
+    def get_temporary_password(self, obj):
+        return getattr(obj, '_temporary_password', None)

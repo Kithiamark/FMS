@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
-  LayoutDashboard, Milk, PiggyBank, Brain, Bell, Settings, LogOut, Menu, X, ChevronLeft, Beef, MessageCircle, Stethoscope, Leaf, UsersRound
+  LayoutDashboard, Milk, PiggyBank, Brain, Bell, Settings, LogOut, Menu, X, ChevronLeft, Beef, MessageCircle, Stethoscope, Leaf, UsersRound, Calendar
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../ui/Button';
@@ -23,13 +23,22 @@ const Sidebar = ({ isOpen, toggle, isMobile }) => {
   const secondaryNavItems = [
     { icon: Beef, label: 'Herd', path: '/animals' },
     { icon: Stethoscope, label: 'Find Vet', path: '/find-vet' },
-    { icon: UsersRound, label: 'Community', path: '/community' },
+    { icon: UsersRound, Calendar, label: 'Community', path: '/community' },
+    { icon: Calendar, label: 'Tasks', path: '/tasks' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
     { icon: Bell, label: t('alerts'), path: '/alerts' },
     { icon: Settings, label: t('settings'), path: '/settings' },
   ];
 
-  const navItems = isMobile ? secondaryNavItems : [...primaryNavItems, ...secondaryNavItems];
+  const isWorker = user?.role === "FARM_WORKER";
+  const accessibleModules = user?.accessible_modules || [];
+  const filterNav = (item) => {
+    if (!isWorker) return true;
+    const moduleId = item.path.split("/")[1];
+    if (moduleId === "dashboard" || moduleId === "settings") return true;
+    return accessibleModules.includes(moduleId);
+  };
+  const navItems = isMobile ? secondaryNavItems.filter(filterNav) : [...primaryNavItems.filter(filterNav), ...secondaryNavItems.filter(filterNav)];
 
   const sidebarWidth = collapsed ? "w-20" : "w-72";
   const mobileClasses = isMobile 

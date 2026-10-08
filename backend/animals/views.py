@@ -1,3 +1,4 @@
+from core.utils import get_user_farm
 from rest_framework import viewsets, filters, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -23,10 +24,10 @@ class AnimalViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'ADMIN':
             return Animal.objects.filter(is_active=True)
-        if user.role == 'FARMER':
-            if hasattr(user, 'farm'):
-                return Animal.objects.filter(farm=user.farm, is_active=True)
-            return Animal.objects.none()
+        farm = get_user_farm(user)
+        if farm:
+            return Animal.objects.filter(farm=farm, is_active=True)
+        return Animal.objects.none()
         if user.role == 'VETERINARIAN':
             # Vets should access via vet-specific endpoints usually, 
             # but if they hit this, show animals from connected farms?

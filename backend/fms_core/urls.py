@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/v1/', include('vets.urls')),
     path('api/v1/chat/', include('chat_module.urls')),
     path('api/v1/admin/', include('admin_panel.urls')), # Admin API
+    path('api/v1/aggregators/', include('aggregators.urls')),
 ]
 
 if settings.DEBUG:

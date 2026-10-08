@@ -21,3 +21,25 @@ export const useCreateWorker = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['farm-workers'] }),
   });
 };
+
+export const useUpdateWorker = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...payload }) => {
+      const response = await api.patch(`/farm-workers/${id}/`, payload);
+      return response.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['farm-workers'] }),
+  });
+};
+
+export const useDeleteWorker = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/farm-workers/${id}/`);
+      return response.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['farm-workers'] }),
+  });
+};

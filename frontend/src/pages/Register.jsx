@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import Input from '../components/Input';
 import { Leaf, UserPlus } from 'lucide-react';
 
+import api from '../api/axios';
+
 const schema = z.object({
     full_name: z.string().min(2, "Name is too short"),
     phone_number: z.string().min(10, "Invalid phone number").startsWith("+254", "Must start with +254"),
@@ -31,7 +33,12 @@ const Register = () => {
         setServerError('');
         try {
             await registerUser(data);
-            navigate('/login');
+            try {
+                await api.post('/auth/request-otp/', { phone_number: data.phone_number });
+            } catch (otpErr) {
+                console.error("Initial OTP trigger error:", otpErr);
+            }
+            navigate('/otp', { state: { phone_number: data.phone_number } });
         } catch (error) {
             const details = error.response?.data;
             setServerError(details ? Object.values(details).flat().join(' ') : 'Registration failed. Please check your details.');

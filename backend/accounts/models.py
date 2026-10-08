@@ -32,12 +32,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         FARMER = 'FARMER', _('Farmer')
         FARM_WORKER = 'FARM_WORKER', _('Farm Worker')
         VETERINARIAN = 'VETERINARIAN', _('Veterinarian')
+        AGGREGATOR = 'AGGREGATOR', _('Aggregator / Buyer')
         ADMIN = 'ADMIN', _('Admin')
 
     phone_number = PhoneNumberField(unique=True, region='KE')
     full_name = models.CharField(_('full name'), max_length=255)
     email = models.EmailField(_('email address'), blank=True, null=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.FARMER)
+    accessible_modules = models.JSONField(default=list, blank=True, help_text='List of frontend modules this worker can access')
+    national_id = models.CharField(max_length=30, blank=True, default='')
+    alt_phone = models.CharField(max_length=30, blank=True, default='')
+    emergency_contact_name = models.CharField(max_length=100, blank=True, default='')
+    emergency_contact_phone = models.CharField(max_length=30, blank=True, default='')
+    worker_specialty = models.CharField(max_length=100, blank=True, default='')
+    indemnity_agreed = models.BooleanField(default=False)
+    indemnity_agreed_at = models.DateTimeField(null=True, blank=True)
     assigned_farm = models.ForeignKey(
         'farms.Farm',
         on_delete=models.SET_NULL,

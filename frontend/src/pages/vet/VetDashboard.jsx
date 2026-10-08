@@ -107,7 +107,7 @@ const VetDashboard = () => {
                                     ))
                                 )}
                             </div>
-                            <Button className="w-full mt-4 bg-vet-navy hover:bg-vet-navy-light text-white">Schedule Visit</Button>
+                            <Link to="/vet/visits"><Button className="w-full mt-4 bg-vet-navy hover:bg-vet-navy-light text-white">Open Visit Calendar</Button></Link>
                         </div>
 
                         {/* Pending Connections */}

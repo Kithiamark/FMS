@@ -26,3 +26,7 @@ yarn-error.log*
 Thumbs.db
 .idea/
 .vscode/
+
+# Scratch scripts
+fix_*.py
+update_*.py

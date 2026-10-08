@@ -8,7 +8,7 @@ import { cn } from '../ui/Button';
 
 // WebSocket Hook
 const useChatWebSocket = (conversationId, onMessageReceived) => {
-    const { token } = useAuth();
+    const token = localStorage.getItem('access_token');
     const ws = useRef(null);
 
     useEffect(() => {

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../components/ui/Toast';
 import Input from '../components/Input';
 import api from '../api/axios';
 
@@ -17,18 +18,31 @@ const schema = z.object({
 const FarmSetup = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const { addToast } = useToast();
+    const [submitting, setSubmitting] = React.useState(false);
     const { register, handleSubmit, formState: { errors } } = useForm({
         resolver: zodResolver(schema)
     });
 
     const onSubmit = async (data) => {
+        setSubmitting(true);
         try {
-            // API call to save farm details --- IGNORE ---
-            await api.post('/farms/', data);
-            console.log(data);
+            await api.post('/farms/', {
+                ...data,
+                estimated_herd_size: data.animals
+            });
+            addToast('Farm details configured successfully.', 'success');
             navigate('/dashboard');
         } catch (error) {
-            console.error("Setup failed", error);
+            const msg = error.response?.data?.detail 
+                || error.response?.data?.name?.[0]
+                || error.response?.data?.county?.[0]
+                || error.response?.data?.sub_county?.[0]
+                || error.response?.data?.animals?.[0]
+                || 'Farm setup failed. Please check the entered details.';
+            addToast(msg, 'error');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -64,8 +78,8 @@ const FarmSetup = () => {
                         {...register('animals')} 
                         error={errors.animals} 
                     />
-                    <button type="submit" className="w-full bg-amber-accent text-white font-bold py-3 rounded hover:bg-yellow-600 transition">
-                        {t('submit')}
+                    <button type="submit" disabled={submitting} className="w-full bg-amber-accent text-white font-bold py-3 rounded hover:bg-yellow-600 transition disabled:opacity-50">
+                        {submitting ? 'Setting up...' : t('submit')}
                     </button>
                 </form>
             </div>

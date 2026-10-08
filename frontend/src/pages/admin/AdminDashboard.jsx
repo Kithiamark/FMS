@@ -1,15 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { AdminLayout } from '../../components/Layout/AdminLayout';
 import { 
   Users, CreditCard, TrendingUp, Activity, AlertCircle, 
-  ArrowUpRight, ArrowDownRight, Stethoscope
+  ArrowUpRight, ArrowDownRight, Stethoscope, KeyRound, Copy, Check, RefreshCw
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 
 const fetchAdminStats = async () => {
     const { data } = await api.get('/admin/stats/');
+    return data;
+};
+
+const fetchRecentOTPs = async () => {
+    const { data } = await api.get('/admin/recent-otps/');
     return data;
 };
 
@@ -38,6 +43,18 @@ const StatCard = ({ title, value, subtext, trend, icon, color = "text-admin-acce
 
 const AdminDashboard = () => {
     const { data, isLoading } = useQuery({ queryKey: ['adminStats'], queryFn: fetchAdminStats });
+    const { data: recentOTPs = [], refetch: refetchOTPs, isFetching: isFetchingOTPs } = useQuery({
+        queryKey: ['recentOTPs'],
+        queryFn: fetchRecentOTPs,
+        refetchInterval: 10000 // Poll every 10s for live OTPs
+    });
+    const [copiedOtpId, setCopiedOtpId] = useState(null);
+
+    const handleCopyOtp = (code, id) => {
+        navigator.clipboard.writeText(code);
+        setCopiedOtpId(id);
+        setTimeout(() => setCopiedOtpId(null), 2500);
+    };
 
     // Mock chart data (replace with real if API supports historical)
     const revenueData = [
@@ -127,6 +144,59 @@ const AdminDashboard = () => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </div>
+
+                {/* Active OTP Feed for Platform Operators */}
+                <div className="bg-admin-card border border-emerald-900/40 rounded-xl overflow-hidden shadow-lg">
+                    <div className="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-900/40">
+                        <div className="flex items-center gap-2.5">
+                            <KeyRound className="text-emerald-400" size={18} />
+                            <div>
+                                <h3 className="text-white font-bold text-sm">Active Verification Codes (Live OTP Feed)</h3>
+                                <p className="text-xs text-gray-400">Recent farmer and user registration OTPs (last 15 minutes)</p>
+                            </div>
+                        </div>
+                        <button 
+                            type="button"
+                            onClick={() => refetchOTPs()} 
+                            disabled={isFetchingOTPs}
+                            className="flex items-center gap-1.5 text-xs text-admin-accent hover:text-white bg-gray-800/60 px-3 py-1.5 rounded-lg border border-gray-700/60 transition"
+                        >
+                            <RefreshCw size={12} className={isFetchingOTPs ? "animate-spin" : ""} />
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+
+                    <div className="p-4">
+                        {recentOTPs.length === 0 ? (
+                            <p className="text-xs text-gray-500 py-4 text-center">No active OTP requests in the last 15 minutes.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {recentOTPs.map(item => (
+                                    <div key={item.id} className="p-3.5 rounded-lg bg-gray-900/70 border border-gray-800 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-gray-400">{item.phone_number}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="font-mono text-xl font-bold tracking-widest text-emerald-400">{item.otp_code}</span>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.is_expired ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                                                    {item.is_expired ? 'Expired' : 'Active'}
+                                                </span>
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 mt-1">{new Date(item.created_at).toLocaleTimeString()}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleCopyOtp(item.otp_code, item.id)}
+                                            className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 transition"
+                                            title="Copy verification code"
+                                        >
+                                            {copiedOtpId === item.id ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 

@@ -154,9 +154,9 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
             record = VaccinationRecord.objects.create(
                 animal=animal,
                 vaccine_name=data.get('vaccine_name'),
-                date_administered=data.get('date_administered', timezone.now().date()),
+                date_given=data.get('date_administered') or data.get('date_given') or timezone.now().date(),
                 next_due_date=next_due,
-                performed_by=f"Dr. {request.user.full_name}"
+                given_by=f"Dr. {request.user.full_name}"
             )
 
             if next_due:
@@ -176,8 +176,8 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
             return Response({'status': 'created', 'id': record.id}, status=status.HTTP_201_CREATED)
         
         else:
-            records = VaccinationRecord.objects.filter(animal=animal).order_by('-date_administered')
-            data = [{'id': r.id, 'vaccine': r.vaccine_name, 'date': r.date_administered, 'next_due': r.next_due_date} for r in records]
+            records = VaccinationRecord.objects.filter(animal=animal).order_by('-date_given')
+            data = [{'id': r.id, 'vaccine': r.vaccine_name, 'date': r.date_given, 'next_due': r.next_due_date} for r in records]
             return Response(data)
 
     @action(detail=True, methods=['patch'], url_path='health-status')
@@ -203,3 +203,44 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
             is_pinned=request.data.get('is_pinned', False)
         )
         return Response({'status': 'created'}, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='records')
+    def all_records(self, request):
+        vet = request.user.vet_profile
+        connected_farms = VetFarmConnection.objects.filter(vet=vet, status=VetFarmConnection.Status.ACTIVE).values_list('farm_id', flat=True)
+        
+        health_records = HealthRecord.objects.filter(animal__farm_id__in=connected_farms).select_related('animal', 'animal__farm').order_by('-date')[:50]
+        vaccinations = VaccinationRecord.objects.filter(animal__farm_id__in=connected_farms).select_related('animal', 'animal__farm').order_by('-date_given')[:50]
+        
+        data = {
+            'health': [{'id': r.id, 'animal': r.animal.name, 'farm': r.animal.farm.name, 'diagnosis': r.diagnosis, 'date': r.date, 'treatment': r.treatment} for r in health_records],
+            'vaccinations': [{'id': r.id, 'animal': r.animal.name, 'farm': r.animal.farm.name, 'vaccine': r.vaccine_name, 'date': r.date_given, 'next_due': r.next_due_date} for r in vaccinations]
+        }
+        return Response(data)
+
+    @action(detail=False, methods=['get'], url_path='visits')
+    def all_visits(self, request):
+        vet = request.user.vet_profile
+        visits = VetVisit.objects.filter(vet=vet).select_related('farm').order_by('-scheduled_date')
+        
+        data = [{'id': v.id, 'farm': v.farm.name, 'date': v.scheduled_date, 'type': v.visit_type, 'status': v.status, 'notes': v.notes} for v in visits]
+        return Response(data)
+
+    @action(detail=False, methods=['get', 'post'], url_path='connections')
+    def manage_connections(self, request):
+        vet = request.user.vet_profile
+        if request.method == 'POST':
+            conn_id = request.data.get('id')
+            action = request.data.get('action')
+            conn = get_object_or_404(VetFarmConnection, id=conn_id, vet=vet)
+            if action == 'accept':
+                conn.status = VetFarmConnection.Status.ACTIVE
+                conn.save()
+            elif action == 'reject':
+                conn.status = VetFarmConnection.Status.REJECTED
+                conn.save()
+            return Response({'status': 'updated'})
+            
+        connections = VetFarmConnection.objects.filter(vet=vet).select_related('farm').order_by('-created_at')
+        data = [{'id': c.id, 'farm': c.farm.name, 'owner': c.farm.owner.full_name, 'status': c.status, 'date': c.created_at} for c in connections]
+        return Response(data)

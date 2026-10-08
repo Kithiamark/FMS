@@ -20,10 +20,10 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'ADMIN':
             return Expense.objects.all()
-        return Expense.objects.filter(farm=user.farm)
+        return Expense.objects.filter(farm=get_user_farm(user))
 
     def perform_create(self, serializer):
-        serializer.save(farm=self.request.user.farm, recorded_by=self.request.user)
+        serializer.save(farm=get_user_farm(self.request.user), recorded_by=self.request.user)
 
 class IncomeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsFarmer | IsAdmin]
@@ -33,14 +33,14 @@ class IncomeViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'ADMIN':
             return Income.objects.all()
-        return Income.objects.filter(farm=user.farm)
+        return Income.objects.filter(farm=get_user_farm(user))
 
     def perform_create(self, serializer):
-        serializer.save(farm=self.request.user.farm, recorded_by=self.request.user)
+        serializer.save(farm=get_user_farm(self.request.user), recorded_by=self.request.user)
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        farm = request.user.farm
+        farm = get_user_farm(request.user)
         today = timezone.now().date()
         year = int(request.query_params.get('year') or today.year)
         month = int(request.query_params.get('month') or today.month)

@@ -98,7 +98,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             conv = Conversation.objects.get(id=conversation_id)
             if hasattr(user, 'vet_profile') and conv.vet == user.vet_profile:
                 return True
-            if hasattr(user, 'farm') and conv.farm == user.farm:
+            farm = getattr(user, 'farm', None) or getattr(user, 'assigned_farm', None)
+            if farm and conv.farm == farm:
                 return True
             return False
         except Conversation.DoesNotExist:

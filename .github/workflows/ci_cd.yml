@@ -56,4 +56,4 @@ jobs:
         script: |
           docker pull registry.digitalocean.com/fms/backend:latest
           cd /opt/fms
-          docker-compose up -d --build
+          docker-compose up -d

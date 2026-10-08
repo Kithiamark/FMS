@@ -7,6 +7,7 @@ app = FastAPI(title="FMS AI Service")
 
 API_KEY = os.getenv("AI_SERVICE_API_KEY", "dev-secret-key")
 
+
 async def verify_api_key(x_api_key: str = Header(...)):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid API Key")

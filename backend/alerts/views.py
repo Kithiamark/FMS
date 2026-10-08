@@ -1,3 +1,4 @@
+from core.utils import get_user_farm
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -18,13 +19,13 @@ class AlertViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Alert.objects.filter(farm=self.request.user.farm).order_by('-created_at')
+        return Alert.objects.filter(farm=get_user_farm(self.request.user)).order_by('-created_at')
 
     def perform_create(self, serializer):
         animal = serializer.validated_data.get('animal')
-        if animal and animal.farm != self.request.user.farm:
+        if animal and animal.farm != get_user_farm(self.request.user):
             raise serializers.ValidationError({'animal': 'Animal does not belong to your farm.'})
-        serializer.save(farm=self.request.user.farm, created_by=self.request.user)
+        serializer.save(farm=get_user_farm(self.request.user), created_by=self.request.user)
 
     @action(detail=True, methods=['patch'])
     def read(self, request, pk=None):

@@ -2,7 +2,8 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import VetProfile, VetFarmConnection
-from .serializers import VetProfileSerializer, VetFarmConnectionSerializer
+from .serializers import VetProfileSerializer, VetFarmConnectionSerializer, VetListSerializer
+from django.utils import timezone
 from accounts.permissions import IsVet, IsFarmer, IsAdmin
 
 class VetProfileViewSet(viewsets.ModelViewSet):
@@ -11,6 +12,26 @@ class VetProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated] 
     serializer_class = VetProfileSerializer
     queryset = VetProfile.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return VetListSerializer
+        return VetProfileSerializer
+
+    @action(detail=False, methods=['get', 'patch'], url_path='my-profile')
+    def my_profile(self, request):
+        if not hasattr(request.user, 'vet_profile'):
+            return Response({'error': 'User is not a veterinarian'}, status=status.HTTP_400_BAD_REQUEST)
+        profile = request.user.vet_profile
+        if request.method == 'PATCH':
+            data = request.data.copy()
+            if data.get('indemnity_agreed') and not profile.indemnity_agreed:
+                profile.indemnity_agreed_at = timezone.now()
+            serializer = VetProfileSerializer(profile, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        return Response(VetProfileSerializer(profile).data)
 
     def get_queryset(self):
         # Filtering logic for directory
@@ -22,7 +43,7 @@ class VetProfileViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Only farmers can initiate connection'}, status=status.HTTP_403_FORBIDDEN)
         
         vet = self.get_object()
-        farm = request.user.farm
+        farm = getattr(request.user, 'farm', None) or getattr(request.user, 'assigned_farm', None)
         
         connection, created = VetFarmConnection.objects.get_or_create(
             vet=vet, 
@@ -45,10 +66,11 @@ class VetConnectionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        farm = getattr(user, 'farm', None) or getattr(user, 'assigned_farm', None)
         if user.role == 'VETERINARIAN':
             return VetFarmConnection.objects.filter(vet=user.vet_profile)
-        elif user.role == 'FARMER':
-            return VetFarmConnection.objects.filter(farm=user.farm)
+        elif user.role in ['FARMER', 'FARM_WORKER'] and farm:
+            return VetFarmConnection.objects.filter(farm=farm)
         return VetFarmConnection.objects.none()
 
     @action(detail=True, methods=['post'])

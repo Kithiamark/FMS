@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Building, Stethoscope, Calendar, MessageSquare, 
   Users, User, LogOut, ToggleLeft, ToggleRight, Menu, X 
-} from 'lucide-react';
+, FileText, UserCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../ui/Button';
 
@@ -15,11 +15,11 @@ const VetSidebar = ({ isOpen, toggle, isMobile }) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/vet/dashboard' },
     { icon: Building, label: 'My Farms', path: '/vet/farms' },
-    { icon: Stethoscope, label: 'Animal Records', path: '/vet/records' },
+    { icon: FileText, label: 'Animal Records', path: '/vet/records' },
     { icon: Calendar, label: 'Visits', path: '/vet/visits' },
+    { icon: Users, label: 'Connections', path: '/vet/connections' },
     { icon: MessageSquare, label: 'Messages', path: '/vet/messages' },
-    { icon: Users, label: 'Connections', path: '/vet/connections', badge: true },
-    { icon: User, label: 'Profile', path: '/vet/profile' },
+    { icon: UserCircle, label: 'Profile', path: '/vet/profile' },
   ];
 
   const mobileClasses = isMobile 
