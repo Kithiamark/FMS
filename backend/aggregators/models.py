@@ -42,17 +42,49 @@ class MilkCollection(models.Model):
         UNPAID = 'UNPAID', 'Unpaid'
         PAID = 'PAID', 'Paid'
 
+    class QualityGrade(models.TextChoices):
+        GRADE_A = 'GRADE_A', 'Grade A (Premium)'
+        GRADE_B = 'GRADE_B', 'Grade B (Standard)'
+        REJECTED = 'REJECTED', 'Rejected'
+
     connection = models.ForeignKey(AggregatorFarmConnection, on_delete=models.CASCADE, related_name='collections')
     date = models.DateField()
     litres_collected = models.DecimalField(max_digits=8, decimal_places=2)
     price_per_litre = models.DecimalField(max_digits=8, decimal_places=2)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
     payment_status = models.CharField(max_length=20, choices=Status.choices, default=Status.UNPAID)
+    
+    # Milk Platform Quality Testing
+    lactometer_reading = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True, help_text="Specific gravity, e.g. 1.028")
+    temperature_celsius = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, help_text="Intake temperature in °C, e.g. 4.5")
+    alcohol_test_passed = models.BooleanField(default=True, help_text="Alcohol / clot-on-boiling rapid test")
+    quality_grade = models.CharField(max_length=20, choices=QualityGrade.choices, default=QualityGrade.GRADE_A)
+    rejection_reason = models.CharField(max_length=255, blank=True, default='')
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        self.total_price = self.litres_collected * self.price_per_litre
+        from decimal import Decimal
+        if self.quality_grade == self.QualityGrade.REJECTED:
+            self.total_price = Decimal('0.00')
+        else:
+            self.total_price = self.litres_collected * self.price_per_litre
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.litres_collected}L from {self.connection.farm.name} on {self.date}"
+        return f"{self.litres_collected}L from {self.connection.farm.name} on {self.date} ({self.quality_grade})"
+
+
+class AggregatorMessage(models.Model):
+    connection = models.ForeignKey(AggregatorFarmConnection, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='aggregator_messages')
+    content = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Msg from {self.sender.full_name} on {self.connection} at {self.created_at}"
+

@@ -65,3 +65,30 @@ export const useUpdateAggregatorProfileMutation = () => {
         },
     });
 };
+
+export const useConnectionMessages = (connectionId) => {
+    return useQuery({
+        queryKey: ['connectionMessages', connectionId],
+        queryFn: async () => {
+            if (!connectionId) return [];
+            const { data } = await axios.get(`/aggregators/connections/${connectionId}/messages/`);
+            return Array.isArray(data) ? data : (data?.results || []);
+        },
+        enabled: !!connectionId,
+        refetchInterval: 5000,
+    });
+};
+
+export const useSendMessageMutation = (connectionId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (content) => {
+            const { data } = await axios.post(`/aggregators/connections/${connectionId}/messages/`, { content });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['connectionMessages', connectionId] });
+        },
+    });
+};
+

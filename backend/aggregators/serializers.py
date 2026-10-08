@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import AggregatorProfile, AggregatorFarmConnection, MilkCollection
+from .models import AggregatorProfile, AggregatorFarmConnection, MilkCollection, AggregatorMessage
 from farms.models import Farm
 from core.utils import get_user_farm
 
@@ -62,9 +62,16 @@ class AggregatorFarmConnectionSerializer(serializers.ModelSerializer):
         return attrs
 
 class MilkCollectionSerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='connection.farm.name', read_only=True)
+
     class Meta:
         model = MilkCollection
-        fields = ['id', 'connection', 'date', 'litres_collected', 'price_per_litre', 'total_price', 'payment_status', 'created_at']
+        fields = [
+            'id', 'connection', 'farm_name', 'date', 'litres_collected', 
+            'price_per_litre', 'total_price', 'payment_status',
+            'lactometer_reading', 'temperature_celsius', 'alcohol_test_passed', 
+            'quality_grade', 'rejection_reason', 'created_at'
+        ]
         read_only_fields = ['total_price', 'created_at']
 
     def validate(self, attrs):
@@ -77,4 +84,33 @@ class MilkCollectionSerializer(serializers.ModelSerializer):
         price = attrs.get('price_per_litre')
         if price is not None and price <= 0:
             raise serializers.ValidationError({'price_per_litre': 'Price per litre must be greater than zero.'})
+
+        lactometer = attrs.get('lactometer_reading')
+        if lactometer is not None and (lactometer < 1.015 or lactometer > 1.045):
+            raise serializers.ValidationError({'lactometer_reading': 'Lactometer reading must be within realistic specific gravity bounds (1.015 to 1.045).'})
+
+        temp = attrs.get('temperature_celsius')
+        if temp is not None and (temp < -5.0 or temp > 50.0):
+            raise serializers.ValidationError({'temperature_celsius': 'Temperature must be between -5.0°C and 50.0°C.'})
+
+        quality = attrs.get('quality_grade')
+        rejection_reason = attrs.get('rejection_reason')
+        if quality == MilkCollection.QualityGrade.REJECTED and not rejection_reason:
+            raise serializers.ValidationError({'rejection_reason': 'Rejection reason is required when milk collection is rejected.'})
+
         return attrs
+
+
+class AggregatorMessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source='sender.full_name', read_only=True)
+    is_me = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AggregatorMessage
+        fields = ['id', 'connection', 'sender', 'sender_name', 'content', 'is_read', 'is_me', 'created_at']
+        read_only_fields = ['id', 'connection', 'sender', 'is_read', 'created_at']
+
+    def get_is_me(self, obj):
+        request = self.context.get('request')
+        return bool(request and request.user == obj.sender)
+

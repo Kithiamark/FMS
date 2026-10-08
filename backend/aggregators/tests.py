@@ -277,3 +277,96 @@ class TestAggregatorLedger:
         assert res.status_code == status.HTTP_400_BAD_REQUEST
         assert 'error' in res.data
 
+    def test_milk_collection_quality_control_fields_and_rejected_pricing(self, api_client, aggregator_profile, farm):
+        """Tests lactometer reading, temperature, quality grading, and zero price on rejected batches."""
+        conn = AggregatorFarmConnection.objects.create(
+            aggregator=aggregator_profile,
+            farm=farm,
+            status='ACCEPTED'
+        )
+        api_client.force_authenticate(user=aggregator_profile.user)
+
+        # 1. Successful Grade A collection
+        res_grade_a = api_client.post('/api/v1/aggregators/collections/', {
+            'connection': conn.id,
+            'date': '2026-06-01',
+            'litres_collected': 100.0,
+            'price_per_litre': 48.0,
+            'payment_status': 'PAID',
+            'lactometer_reading': 1.029,
+            'temperature_celsius': 4.2,
+            'alcohol_test_passed': True,
+            'quality_grade': 'GRADE_A'
+        }, format='json')
+        assert res_grade_a.status_code == status.HTTP_201_CREATED
+        assert float(res_grade_a.data['total_price']) == 4800.0
+        assert float(res_grade_a.data['lactometer_reading']) == 1.029
+        assert float(res_grade_a.data['temperature_celsius']) == 4.2
+
+        # 2. Rejected collection requires rejection_reason and sets total_price to 0
+        res_no_reason = api_client.post('/api/v1/aggregators/collections/', {
+            'connection': conn.id,
+            'date': '2026-06-02',
+            'litres_collected': 50.0,
+            'price_per_litre': 48.0,
+            'quality_grade': 'REJECTED'
+        }, format='json')
+        assert res_no_reason.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'rejection_reason' in res_no_reason.data
+
+        res_rejected = api_client.post('/api/v1/aggregators/collections/', {
+            'connection': conn.id,
+            'date': '2026-06-02',
+            'litres_collected': 50.0,
+            'price_per_litre': 48.0,
+            'quality_grade': 'REJECTED',
+            'rejection_reason': 'High acidity - failed alcohol platform test',
+            'alcohol_test_passed': False
+        }, format='json')
+        assert res_rejected.status_code == status.HTTP_201_CREATED
+        assert float(res_rejected.data['total_price']) == 0.0
+
+        # 3. Invalid lactometer specific gravity bounds rejected
+        res_bad_lacto = api_client.post('/api/v1/aggregators/collections/', {
+            'connection': conn.id,
+            'date': '2026-06-03',
+            'litres_collected': 60.0,
+            'price_per_litre': 48.0,
+            'lactometer_reading': 1.999
+        }, format='json')
+        assert res_bad_lacto.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_aggregator_connection_messages_authorization(self, api_client, aggregator_profile, farm, farmer_other):
+        """Tests sending and reading messages between connected parties while blocking unauthorized third parties."""
+        conn = AggregatorFarmConnection.objects.create(
+            aggregator=aggregator_profile,
+            farm=farm,
+            status='ACCEPTED'
+        )
+
+        # 1. Aggregator sends message
+        api_client.force_authenticate(user=aggregator_profile.user)
+        send_res = api_client.post(f'/api/v1/aggregators/connections/{conn.id}/messages/', {
+            'content': 'We will collect your 120L batch tomorrow at 06:30 AM.'
+        }, format='json')
+        assert send_res.status_code == status.HTTP_201_CREATED
+        assert send_res.data['content'] == 'We will collect your 120L batch tomorrow at 06:30 AM.'
+        assert send_res.data['is_me'] is True
+
+        # 2. Connected farmer reads message and replies
+        api_client.force_authenticate(user=farm.owner)
+        get_res = api_client.get(f'/api/v1/aggregators/connections/{conn.id}/messages/')
+        assert get_res.status_code == status.HTTP_200_OK
+        assert len(get_res.data) == 1
+        assert get_res.data[0]['is_me'] is False
+
+        reply_res = api_client.post(f'/api/v1/aggregators/connections/{conn.id}/messages/', {
+            'content': 'Confirmed, milk is already chilled in bulk tank.'
+        }, format='json')
+        assert reply_res.status_code == status.HTTP_201_CREATED
+
+        # 3. Third party cannot access messages (isolated by queryset / 404 Not Found or 403 Forbidden)
+        api_client.force_authenticate(user=farmer_other)
+        unauth_res = api_client.get(f'/api/v1/aggregators/connections/{conn.id}/messages/')
+        assert unauth_res.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
+

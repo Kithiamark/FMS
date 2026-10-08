@@ -283,7 +283,20 @@ const Community = () => {
       <Modal isOpen={activeModal === 'invite'} onClose={() => setActiveModal(null)} title="Add Friend">
         <form onSubmit={submitInvite} className="space-y-3">
           <input value={inviteForm.display_name} onChange={event => setInviteForm({ ...inviteForm, display_name: event.target.value })} placeholder="Friend name" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500" />
-          <input value={inviteForm.phone_number} onChange={event => setInviteForm({ ...inviteForm, phone_number: event.target.value })} placeholder="+254..." className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500" />
+          <div className="flex w-full items-stretch rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+            <span className="inline-flex items-center px-3 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold text-xs select-none">
+              +254
+            </span>
+            <input 
+              value={(inviteForm.phone_number || '').startsWith('+254') ? inviteForm.phone_number.slice(4) : (inviteForm.phone_number || '')} 
+              onChange={event => {
+                const raw = event.target.value.replace(/[^0-9]/g, '');
+                setInviteForm({ ...inviteForm, phone_number: raw ? `+254${raw.replace(/^0+/, '')}` : '' });
+              }} 
+              placeholder="712345678" 
+              className="flex-1 min-w-0 bg-transparent px-3 py-2 text-sm dark:text-slate-100 placeholder:text-slate-400 focus:outline-none" 
+            />
+          </div>
           <Button type="submit" disabled={inviteMember.isPending || !selectedCommunity?.id} className="w-full">Add Friend</Button>
         </form>
       </Modal>

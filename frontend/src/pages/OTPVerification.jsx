@@ -16,6 +16,8 @@ const OTPVerification = () => {
     const [otp, setOtp] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [indemnityAgreed, setIndemnityAgreed] = useState(false);
     
     const [step, setStep] = useState(1); // 1: Verify OTP, 2: Set Password & Accept Indemnity
@@ -146,13 +148,21 @@ const OTPVerification = () => {
                     <form onSubmit={handleProceedToStep2} className="space-y-5">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Phone Number</label>
-                            <input
-                                required
-                                value={phoneNumber}
-                                onChange={(e) => setPhoneNumber(e.target.value)}
-                                placeholder="+2547..."
-                                className="w-full rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-inner"
-                            />
+                            <div className="flex w-full items-stretch rounded-xl border border-slate-200 bg-white/70 shadow-inner focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500 overflow-hidden">
+                                <span className="inline-flex items-center px-3.5 border-r border-slate-200 bg-slate-50/80 text-slate-700 font-semibold text-sm select-none">
+                                    +254
+                                </span>
+                                <input
+                                    required
+                                    value={phoneNumber.startsWith('+254') ? phoneNumber.slice(4) : phoneNumber}
+                                    onChange={(e) => {
+                                        const raw = e.target.value.replace(/[^0-9]/g, '');
+                                        setPhoneNumber(raw ? `+254${raw.replace(/^0+/, '')}` : '');
+                                    }}
+                                    placeholder="712 345 678"
+                                    className="flex-1 min-w-0 bg-transparent px-4 py-3 text-slate-900 focus:outline-none text-sm"
+                                />
+                            </div>
                         </div>
 
                         <div>
@@ -206,16 +216,24 @@ const OTPVerification = () => {
                             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
                                 Create Account Password <span className="text-rose-500">*</span>
                             </label>
-                            <div className="relative">
+                            <div className="relative flex items-center">
                                 <input
                                     required
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter minimum 6 characters"
-                                    className="w-full rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-inner"
+                                    className="w-full rounded-xl border border-slate-200 bg-white/70 pl-4 pr-11 py-3 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-inner text-sm"
                                 />
-                                <Lock size={18} className="absolute right-3.5 top-3.5 text-slate-400" />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3.5 p-1 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                    tabIndex={-1}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                         </div>
 
@@ -223,14 +241,25 @@ const OTPVerification = () => {
                             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
                                 Confirm Password <span className="text-rose-500">*</span>
                             </label>
-                            <input
-                                required
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Re-type your password"
-                                className="w-full rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-inner"
-                            />
+                            <div className="relative flex items-center">
+                                <input
+                                    required
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="Re-type your password"
+                                    className="w-full rounded-xl border border-slate-200 bg-white/70 pl-4 pr-11 py-3 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-inner text-sm"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3.5 p-1 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                    tabIndex={-1}
+                                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="rounded-xl border border-amber-200/90 bg-amber-50/80 p-4 text-xs backdrop-blur-sm">

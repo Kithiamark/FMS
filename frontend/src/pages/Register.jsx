@@ -6,12 +6,13 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Input from '../components/Input';
+import { normalizeKenyanPhone } from '../utils/phone';
 import { Leaf, ArrowRight, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
 import api from '../api/axios';
 
 const schema = z.object({
     full_name: z.string().min(2, "Name must be at least 2 characters"),
-    phone_number: z.string().min(10, "Invalid phone number").startsWith("+254", "Must start with +254 (e.g. +254712345678)"),
+    phone_number: z.string().min(8, "Enter a valid mobile number (e.g. 712345678)"),
 });
 
 const Register = () => {
@@ -29,16 +30,17 @@ const Register = () => {
         setServerError('');
         setIsSubmitting(true);
         try {
+            const formattedPhone = normalizeKenyanPhone(data.phone_number);
             await registerUser({
                 full_name: data.full_name,
-                phone_number: data.phone_number,
+                phone_number: formattedPhone,
             });
             try {
-                await api.post('/auth/request-otp/', { phone_number: data.phone_number });
+                await api.post('/auth/request-otp/', { phone_number: formattedPhone });
             } catch (otpErr) {
                 console.error("Initial OTP trigger error:", otpErr);
             }
-            navigate('/otp', { state: { phone_number: data.phone_number } });
+            navigate('/otp', { state: { phone_number: formattedPhone } });
         } catch (error) {
             const details = error.response?.data;
             setServerError(
@@ -135,11 +137,12 @@ const Register = () => {
                                 <Input 
                                     label={t('phone_number')} 
                                     type="tel" 
-                                    placeholder="+254712345678" 
+                                    prefix="+254"
+                                    placeholder="712 345 678" 
                                     {...register('phone_number')} 
                                     error={errors.phone_number} 
                                 />
-                                <p className="mt-1 text-xs text-slate-500">Must start with +254 (Kenyan mobile format)</p>
+                                <p className="mt-1 text-xs text-slate-500">Kenyan mobile format (+254 prefix included automatically)</p>
                             </div>
 
                             {/* Informative Security Notice */}

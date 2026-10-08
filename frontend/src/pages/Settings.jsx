@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, CreditCard, Plus, Save, Settings as SettingsIcon, ShieldCheck, UserRound, Edit2, Trash2, Send, Lock, MessageSquare } from 'lucide-react';
+import { CheckCircle2, CreditCard, Plus, Save, Settings as SettingsIcon, ShieldCheck, UserRound, Edit2, Trash2, Send, Lock, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFarms, useUpdateFarm, useUpdateProfile } from '../hooks/useFarm';
 import { Button } from '../components/ui/Button';
@@ -44,6 +44,7 @@ const Settings = () => {
     indemnity_agreed: true
   });
   const [editingWorkerId, setEditingWorkerId] = useState(null);
+  const [showWorkerPassword, setShowWorkerPassword] = useState(false);
 
   const availableModules = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -562,7 +563,21 @@ const Settings = () => {
         <form onSubmit={submitWorker} className="space-y-4">
           <input required value={workerForm.full_name} onChange={event => setWorkerForm({ ...workerForm, full_name: event.target.value })} placeholder="Worker full name" className="w-full rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input required value={workerForm.phone_number} onChange={event => setWorkerForm({ ...workerForm, phone_number: event.target.value })} placeholder="+254..." className="w-full rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500" />
+            <div className="flex w-full items-stretch rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+              <span className="inline-flex items-center px-3 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold text-xs select-none">
+                +254
+              </span>
+              <input 
+                required 
+                value={(workerForm.phone_number || '').startsWith('+254') ? workerForm.phone_number.slice(4) : (workerForm.phone_number || '')} 
+                onChange={event => {
+                  const raw = event.target.value.replace(/[^0-9]/g, '');
+                  setWorkerForm({ ...workerForm, phone_number: raw ? `+254${raw.replace(/^0+/, '')}` : '' });
+                }} 
+                placeholder="712345678" 
+                className="flex-1 min-w-0 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none" 
+              />
+            </div>
             <input value={workerForm.national_id || ''} onChange={event => setWorkerForm({ ...workerForm, national_id: event.target.value })} placeholder="National ID / Passport" className="w-full rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -590,12 +605,24 @@ const Settings = () => {
           </div>
 
           <div className="pt-2">
-            <input 
-              value={workerForm.password} 
-              onChange={event => setWorkerForm({ ...workerForm, password: event.target.value })} 
-              placeholder={editingWorkerId ? "Leave blank to keep current password" : "Password (min 8 chars, or leave blank to auto-generate)"} 
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500" 
-            />
+            <div className="relative flex items-center">
+              <input 
+                type={showWorkerPassword ? "text" : "password"}
+                value={workerForm.password} 
+                onChange={event => setWorkerForm({ ...workerForm, password: event.target.value })} 
+                placeholder={editingWorkerId ? "Leave blank to keep current password" : "Password (min 8 chars, or leave blank to auto-generate)"} 
+                className="w-full rounded-xl border border-slate-200 pl-3 pr-10 py-2 text-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus:outline-none" 
+              />
+              <button
+                type="button"
+                onClick={() => setShowWorkerPassword(!showWorkerPassword)}
+                className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
+                tabIndex={-1}
+                aria-label={showWorkerPassword ? "Hide password" : "Show password"}
+              >
+                {showWorkerPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             {!editingWorkerId && (
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Leave blank to automatically generate a secure temporary password.

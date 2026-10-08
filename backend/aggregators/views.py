@@ -5,8 +5,13 @@ from core.utils import get_user_farm
 from rest_framework import viewsets, permissions, status, exceptions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import AggregatorProfile, AggregatorFarmConnection, MilkCollection
-from .serializers import AggregatorProfileSerializer, AggregatorFarmConnectionSerializer, MilkCollectionSerializer
+from .models import AggregatorProfile, AggregatorFarmConnection, MilkCollection, AggregatorMessage
+from .serializers import (
+    AggregatorProfileSerializer, 
+    AggregatorFarmConnectionSerializer, 
+    MilkCollectionSerializer,
+    AggregatorMessageSerializer
+)
 from .permissions import IsAggregator, IsAggregatorProfileOwnerOrAdmin
 
 class AggregatorProfileViewSet(viewsets.ModelViewSet):
@@ -124,6 +129,36 @@ class AggregatorFarmConnectionViewSet(viewsets.ModelViewSet):
         connection.status = AggregatorFarmConnection.Status.REJECTED
         connection.save()
         return Response({'status': 'Connection rejected'})
+
+    @action(detail=True, methods=['get', 'post'], url_path='messages')
+    def messages(self, request, pk=None):
+        connection = self.get_object()
+        user = request.user
+        farm = get_user_farm(user)
+        is_agg_owner = (user.role == 'AGGREGATOR' and hasattr(user, 'aggregator_profile') and connection.aggregator == user.aggregator_profile)
+        is_farm_owner = (user.role in ['FARMER', 'FARM_WORKER'] and connection.farm == farm)
+        is_admin = getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'ADMIN'
+        
+        if not (is_agg_owner or is_farm_owner or is_admin):
+            return Response({'detail': 'You do not have permission to access messages on this connection.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if request.method == 'POST':
+            content = request.data.get('content', '').strip()
+            if not content:
+                return Response({'content': ['Message content cannot be blank.']}, status=status.HTTP_400_BAD_REQUEST)
+            msg = AggregatorMessage.objects.create(
+                connection=connection,
+                sender=user,
+                content=content
+            )
+            serializer = AggregatorMessageSerializer(msg, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # GET: retrieve messages and mark partner's unread messages as read
+        msgs = connection.messages.select_related('sender').all()
+        msgs.filter(is_read=False).exclude(sender=user).update(is_read=True)
+        serializer = AggregatorMessageSerializer(msgs, many=True, context={'request': request})
+        return Response(serializer.data)
 
 class MilkCollectionViewSet(viewsets.ModelViewSet):
     queryset = MilkCollection.objects.all()

@@ -6,10 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Input from '../components/Input';
+import { normalizeKenyanPhone } from '../utils/phone';
 import { BarChart3, Leaf, LogIn, Milk, ShieldCheck } from 'lucide-react';
 
 const schema = z.object({
-    phone_number: z.string().min(10, "Invalid phone number"),
+    phone_number: z.string().min(8, "Enter a valid mobile number (e.g. 712345678)"),
     password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -25,7 +26,7 @@ const Login = () => {
     const onSubmit = async (data) => {
         setServerError('');
         try {
-            await login(data.phone_number, data.password);
+            await login(normalizeKenyanPhone(data.phone_number), data.password);
             navigate('/dashboard');
         } catch (error) {
             setServerError(error.response?.data?.detail || 'Login failed. Check your phone number and password.');
@@ -114,7 +115,8 @@ const Login = () => {
                             <Input 
                                 label={t('phone_number')} 
                                 type="tel" 
-                                placeholder="+254712345678" 
+                                prefix="+254"
+                                placeholder="712 345 678" 
                                 {...register('phone_number')} 
                                 error={errors.phone_number} 
                             />
