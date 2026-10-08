@@ -20,5 +20,12 @@ urlpatterns = [
     path('api/v1/aggregators/', include('aggregators.urls')),
 ]
 
+from django.views.static import serve
+from django.urls import re_path
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif getattr(settings, 'SERVE_MEDIA', False):
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

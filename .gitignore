@@ -12,6 +12,8 @@ venv/
 db.sqlite3
 media/
 staticfiles/
+logs/
+*.log
 .env
 
 # Node/Vite

@@ -5,6 +5,7 @@ import uuid
 import qrcode
 from io import BytesIO
 from django.core.files import File
+import re
 from farms.models import Farm
 
 class Animal(models.Model):
@@ -60,7 +61,8 @@ class Animal(models.Model):
             img = qr.make_image(fill_color="black", back_color="white")
             buffer = BytesIO()
             img.save(buffer, format="PNG")
-            file_name = f'qr_{self.ear_tag}.png'
+            safe_tag = re.sub(r'[^a-zA-Z0-9_-]', '_', str(self.ear_tag or self.id or 'animal'))
+            file_name = f'qr_{safe_tag}.png'
             self.qr_code.save(file_name, File(buffer), save=False)
         super().save(*args, **kwargs)
 

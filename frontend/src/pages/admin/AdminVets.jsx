@@ -69,8 +69,8 @@ const AdminVets = () => {
                                 <tbody className="divide-y divide-gray-800">
                                     {pendingVets.map(vet => (
                                         <tr key={vet.id} className="hover:bg-gray-800/50">
-                                            <td className="px-6 py-4 font-medium text-white">{vet.name}</td>
-                                            <td className="px-6 py-4 font-mono text-admin-accent">{vet.license}</td>
+                                            <td className="px-6 py-4 font-medium text-white">{vet.name || vet.user_name}</td>
+                                            <td className="px-6 py-4 font-mono text-admin-accent">{vet.license || vet.license_number}</td>
                                             <td className="px-6 py-4">{vet.specialization || 'General'}</td>
                                             <td className="px-6 py-4 flex gap-2">
                                                 <Button 
@@ -161,7 +161,7 @@ const AdminVets = () => {
             >
                 <div className="space-y-4">
                     <p className="text-gray-600">
-                        Are you sure you want to <strong>{actionType}</strong> {selectedVet?.name}?
+                        Are you sure you want to <strong>{actionType}</strong> {selectedVet?.name || selectedVet?.user_name}?
                         {actionType === 'approve' && " They will be granted access to the platform immediately."}
                     </p>
                     

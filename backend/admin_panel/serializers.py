@@ -24,6 +24,8 @@ class SystemLogSerializer(serializers.ModelSerializer):
 class VetProfileAdminSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.full_name', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
+    name = serializers.CharField(source='user.full_name', read_only=True)
+    license = serializers.CharField(source='license_number', read_only=True)
     class Meta:
         model = VetProfile
         fields = '__all__'

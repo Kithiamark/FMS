@@ -14,8 +14,31 @@ CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=bool)
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
-# Data Encryption Key (Must be 32 bytes)
-FIELD_ENCRYPTION_KEY = config('FIELD_ENCRYPTION_KEY', default='Z294NnQ4bWl4bWlrM2Q0cjV0NnlnN2g4ajlrMGwwcDE=') 
+import sys
+from django.core.exceptions import ImproperlyConfigured
+
+# Insecure placeholder committed in repository history
+DEFAULT_INSECURE_ENCRYPTION_KEY = 'Z294NnQ4bWl4bWlrM2Q0cjV0NnlnN2g4ajlrMGwwcDE='
+
+# Data Encryption Key (Must be 32 bytes Fernet key)
+_encryption_key = config('FIELD_ENCRYPTION_KEY', default=None)
+if not _encryption_key:
+    if DEBUG or 'pytest' in sys.modules or 'test' in sys.argv:
+        FIELD_ENCRYPTION_KEY = DEFAULT_INSECURE_ENCRYPTION_KEY
+    else:
+        raise ImproperlyConfigured(
+            "FIELD_ENCRYPTION_KEY environment variable is required in production. "
+            "Generate a secure 32-byte Fernet key with: python -c \"import base64, os; print(base64.b64encode(os.urandom(32)).decode())\""
+        )
+else:
+    if not DEBUG and 'pytest' not in sys.modules and 'test' not in sys.argv and _encryption_key == DEFAULT_INSECURE_ENCRYPTION_KEY:
+        import warnings
+        warnings.warn(
+            "FIELD_ENCRYPTION_KEY is using the insecure default key in production! "
+            "Set a unique 32-byte Fernet key.",
+            RuntimeWarning
+        )
+    FIELD_ENCRYPTION_KEY = _encryption_key 
 
 INSTALLED_APPS = [
     'daphne', # Must be before django.contrib.staticfiles
@@ -157,6 +180,7 @@ CORS_ALLOW_ALL_ORIGINS = True # For development
 import os
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+SERVE_MEDIA = config('SERVE_MEDIA', default=DEBUG, cast=bool)
 
 # M-Pesa Configuration
 MPESA_CONSUMER_KEY = config('MPESA_CONSUMER_KEY', default='')
@@ -177,3 +201,65 @@ CELERY_TIMEZONE = TIME_ZONE
 # Africa's Talking
 AFRICASTALKING_USERNAME = config('AFRICASTALKING_USERNAME', default='sandbox')
 AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY', default='')
+
+# Production Logging Configuration
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'fms.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'fms_error.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'level': 'ERROR',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': config('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['error_file', 'console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['error_file', 'console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'fms': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
