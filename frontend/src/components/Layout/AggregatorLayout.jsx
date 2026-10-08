@@ -30,15 +30,18 @@ const AggregatorSidebar = ({ isOpen, toggle, isMobile }) => {
         <div className="fixed inset-0 bg-black/50 z-30" onClick={toggle} />
       )}
       
-      <aside className={cn("bg-white border-r border-slate-200 flex flex-col", mobileClasses)}>
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100">
+      <aside className={cn("backdrop-blur-xl bg-white/80 border-r border-slate-200/60 shadow-sm flex flex-col", mobileClasses)}>
+        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100/80">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-xl">
+            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-2xl shadow-md shadow-blue-500/20 text-white">
               <Droplets className="text-white" size={20} />
             </div>
-            <span className="font-black text-xl text-slate-900 tracking-tight">Arvion</span>
+            <div>
+              <span className="font-black text-xl text-slate-900 tracking-tight block leading-none">Arvion</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Logistics Hub</span>
+            </div>
           </div>
-          {isMobile && <button onClick={toggle} className="text-slate-500"><X size={24} /></button>}
+          {isMobile && <button onClick={toggle} className="text-slate-500 hover:text-slate-800"><X size={24} /></button>}
         </div>
 
         <nav className="flex-1 py-6 px-4 space-y-2">
@@ -51,8 +54,8 @@ const AggregatorSidebar = ({ isOpen, toggle, isMobile }) => {
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-sm",
                   isActive 
-                    ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100/50" 
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-blue-600/10 text-blue-700 shadow-sm border border-blue-500/20 backdrop-blur-md font-bold" 
+                    : "text-slate-600 hover:bg-white/60 hover:text-slate-900 hover:shadow-xs"
                 )}
                 onClick={() => { if(isMobile) toggle(); }}
               >
@@ -63,16 +66,16 @@ const AggregatorSidebar = ({ isOpen, toggle, isMobile }) => {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="p-4 border-t border-slate-200/60 bg-white/50 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-sm shadow-blue-500/20">
               {user?.full_name?.charAt(0) || 'A'}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-900 truncate">{user?.full_name}</p>
-              <p className="text-xs text-slate-500 truncate">Aggregator</p>
+              <p className="text-xs text-blue-600 font-semibold truncate">Dairy Aggregator</p>
             </div>
-            <button onClick={logout} className="text-slate-400 hover:text-red-500 transition-colors bg-white p-2 rounded-lg border border-slate-200">
+            <button onClick={logout} title="Log out" className="text-slate-400 hover:text-red-500 transition-colors bg-white/80 hover:bg-white p-2 rounded-xl border border-slate-200/80 shadow-xs">
               <LogOut size={16} />
             </button>
           </div>
@@ -86,17 +89,24 @@ export const AggregatorLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#F4F7F3] font-sans text-slate-900">
+    <div className="relative flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+      {/* Soft Ambient Background Orbs */}
+      <div className="pointer-events-none absolute -top-40 -right-40 h-96 w-96 rounded-full bg-blue-300/20 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-indigo-300/15 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/3 -left-32 h-80 w-80 rounded-full bg-cyan-200/20 blur-3xl" />
+
       <AggregatorSidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(false)} isMobile={true} />
       <AggregatorSidebar isOpen={true} toggle={() => {}} isMobile={false} />
 
-      <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/50 flex items-center justify-between px-4 md:hidden">
+      <main className="flex-1 flex flex-col overflow-hidden relative z-10">
+        <header className="h-16 bg-white/70 backdrop-blur-xl border-b border-slate-200/60 flex items-center justify-between px-4 md:hidden">
           <div className="flex items-center gap-2">
-            <Droplets className="text-blue-600" size={20} />
-            <span className="font-bold text-lg text-slate-900">Arvion</span>
+            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-1.5 rounded-lg text-white">
+              <Droplets size={16} />
+            </div>
+            <span className="font-black text-lg text-slate-900">Arvion</span>
           </div>
-          <button onClick={() => setSidebarOpen(true)} className="p-2 text-slate-600 border border-slate-200 rounded-lg bg-white">
+          <button onClick={() => setSidebarOpen(true)} className="p-2 text-slate-600 border border-slate-200/80 rounded-xl bg-white/80 backdrop-blur-md">
             <Menu size={20} />
           </button>
         </header>

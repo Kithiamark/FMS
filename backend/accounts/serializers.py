@@ -10,7 +10,7 @@ from core.utils import get_user_farm
 User = get_user_model()
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, default='')
     phone_number = PhoneNumberField(region="KE")
 
     class Meta:
@@ -20,10 +20,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        raw_password = validated_data.get('password')
+        if not raw_password:
+            import secrets
+            raw_password = secrets.token_urlsafe(16)
         user = User.objects.create_user(
             phone_number=validated_data['phone_number'],
             full_name=validated_data['full_name'],
-            password=validated_data['password'],
+            password=raw_password,
             role=User.Role.FARMER # Default role
         )
         Farm.objects.create(owner=user, name=f"{user.full_name}'s Farm")

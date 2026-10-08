@@ -31,6 +31,44 @@ class TestAuth:
         assert User.objects.count() == 1
         assert User.objects.get().farm is not None # Check farm auto-creation
 
+    def test_register_user_deferred_password_setup(self):
+        # 1. Register with phone and name only (no password provided)
+        payload = {
+            'phone_number': '+254700112233',
+            'full_name': 'Deferred Password Farmer'
+        }
+        res = self.client.post(self.register_url, payload)
+        assert res.status_code == status.HTTP_201_CREATED
+        user = User.objects.get(phone_number=payload['phone_number'])
+        assert user.has_usable_password()
+
+        # 2. Request OTP and retrieve OTP token
+        otp_res = self.client.post('/api/v1/auth/request-otp/', {'phone_number': payload['phone_number']})
+        assert otp_res.status_code == status.HTTP_200_OK
+
+        from core.models import AuditLog
+        audit_log = AuditLog.objects.filter(action='OTP_REQUESTED', metadata__phone_number=payload['phone_number']).latest('timestamp')
+        otp_code = audit_log.metadata['otp_code']
+
+        # 3. Verify OTP, set permanent password and accept indemnity
+        verify_res = self.client.post('/api/v1/auth/verify-otp/', {
+            'phone_number': payload['phone_number'],
+            'otp': otp_code,
+            'password': 'PermPassword@2026',
+            'indemnity_agreed': True
+        })
+        assert verify_res.status_code == status.HTTP_200_OK
+        assert verify_res.data['phone_verified'] is True
+        assert verify_res.data['indemnity_agreed'] is True
+
+        # 4. Login with newly set permanent password
+        login_res = self.client.post(self.login_url, {
+            'phone_number': payload['phone_number'],
+            'password': 'PermPassword@2026'
+        })
+        assert login_res.status_code == status.HTTP_200_OK
+        assert 'access' in login_res.data
+
     def test_login_user(self):
         self.client.post(self.register_url, self.valid_payload)
         response = self.client.post(self.login_url, {
