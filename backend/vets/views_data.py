@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, exceptions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
@@ -36,9 +36,18 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
     queryset = Animal.objects.all() # Needed for detail routes to find objects initially
     serializer_class = serializers.Serializer # Dummy
 
+    def get_vet_profile(self):
+        try:
+            vet = self.request.user.vet_profile
+            if not vet:
+                raise exceptions.ValidationError({'detail': 'Veterinarian profile not configured yet.'})
+            return vet
+        except Exception:
+            raise exceptions.ValidationError({'detail': 'Veterinarian profile not configured yet.'})
+
     @action(detail=False, methods=['get'], url_path='dashboard')
     def dashboard(self, request):
-        vet = request.user.vet_profile
+        vet = self.get_vet_profile()
         
         # Stats
         active_farms_count = VetFarmConnection.objects.filter(vet=vet, status=VetFarmConnection.Status.ACTIVE).count()
@@ -73,7 +82,7 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
 
     @action(detail=False, methods=['get'], url_path='farms')
     def list_farms(self, request):
-        vet = request.user.vet_profile
+        vet = self.get_vet_profile()
         connections = VetFarmConnection.objects.filter(vet=vet, status=VetFarmConnection.Status.ACTIVE).select_related('farm')
         farms = [c.farm for c in connections]
         data = [{'id': f.id, 'name': f.name, 'owner': f.owner.full_name} for f in farms]
@@ -206,7 +215,7 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
 
     @action(detail=False, methods=['get'], url_path='records')
     def all_records(self, request):
-        vet = request.user.vet_profile
+        vet = self.get_vet_profile()
         connected_farms = VetFarmConnection.objects.filter(vet=vet, status=VetFarmConnection.Status.ACTIVE).values_list('farm_id', flat=True)
         
         health_records = HealthRecord.objects.filter(animal__farm_id__in=connected_farms).select_related('animal', 'animal__farm').order_by('-date')[:50]
@@ -220,7 +229,7 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
 
     @action(detail=False, methods=['get'], url_path='visits')
     def all_visits(self, request):
-        vet = request.user.vet_profile
+        vet = self.get_vet_profile()
         visits = VetVisit.objects.filter(vet=vet).select_related('farm').order_by('-scheduled_date')
         
         data = [{'id': v.id, 'farm': v.farm.name, 'date': v.scheduled_date, 'type': v.visit_type, 'status': v.status, 'notes': v.notes} for v in visits]
@@ -228,7 +237,7 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
 
     @action(detail=False, methods=['get', 'post'], url_path='connections')
     def manage_connections(self, request):
-        vet = request.user.vet_profile
+        vet = self.get_vet_profile()
         if request.method == 'POST':
             conn_id = request.data.get('id')
             action = request.data.get('action')
@@ -237,7 +246,7 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
                 conn.status = VetFarmConnection.Status.ACTIVE
                 conn.save()
             elif action == 'reject':
-                conn.status = VetFarmConnection.Status.REJECTED
+                conn.status = VetFarmConnection.Status.DECLINED
                 conn.save()
             return Response({'status': 'updated'})
             

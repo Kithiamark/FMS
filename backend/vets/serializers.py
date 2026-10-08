@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import VetProfile, VetFarmConnection, VetAvailability, VetReview, VetVisit
 from accounts.serializers import UserSerializer
 
+from core.utils import get_user_farm
+
 class VetAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = VetAvailability
@@ -27,7 +29,7 @@ class VetListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return 'NONE'
-        farm = getattr(request.user, 'farm', None) or getattr(request.user, 'assigned_farm', None)
+        farm = get_user_farm(request.user)
         if not farm:
             return 'NONE'
         conn = VetFarmConnection.objects.filter(vet=obj, farm=farm).first()
@@ -41,19 +43,30 @@ class VetProfileSerializer(serializers.ModelSerializer):
     reviews = VetReviewSerializer(many=True, read_only=True)
     is_connected = serializers.SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request and (getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False) or getattr(request.user, 'role', '') == 'ADMIN'):
+            if 'is_verified' in self.fields:
+                self.fields['is_verified'].read_only = False
+
     class Meta:
         model = VetProfile
         fields = '__all__'
+        read_only_fields = ('id', 'user', 'is_verified', 'average_rating', 'total_reviews', 'created_at')
 
     def get_is_connected(self, obj):
         request = self.context.get('request')
-        if request and request.user.is_authenticated and hasattr(request.user, 'farm'):
-            return VetFarmConnection.objects.filter(
-                vet=obj, 
-                farm=request.user.farm,
-                status=VetFarmConnection.Status.ACTIVE
-            ).exists()
-        return False
+        if not request or not request.user.is_authenticated:
+            return False
+        farm = get_user_farm(request.user)
+        if not farm:
+            return False
+        return VetFarmConnection.objects.filter(
+            vet=obj, 
+            farm=farm,
+            status=VetFarmConnection.Status.ACTIVE
+        ).exists()
 
 class VetFarmConnectionSerializer(serializers.ModelSerializer):
     vet_name = serializers.CharField(source='vet.user.full_name', read_only=True)

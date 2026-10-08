@@ -8,10 +8,14 @@ from vets.models import VetFarmConnection
 
 class IsVet(permissions.BasePermission):
     """
-    Custom permission to only allow vets to access the view.
+    Custom permission to only allow vets or admins to access the view.
     """
     def has_permission(self, request, view):
-        return request.user.is_authenticated and hasattr(request.user, 'vet_profile')
+        return request.user.is_authenticated and (
+            request.user.role == 'VETERINARIAN' or 
+            request.user.is_superuser or 
+            request.user.role == 'ADMIN'
+        )
 
 class VetFarmAccessMixin:
     """
@@ -62,3 +66,19 @@ class VetFarmAccessMixin:
             
         self.check_vet_farm_access(self.request, farm=farm, animal=animal)
         return obj
+
+class IsVetProfileOwnerOrAdmin(permissions.BasePermission):
+    """
+    Object-level permission allowing read access to all,
+    connect action to authenticated users,
+    update access only to the profile owner or platform admin,
+    and delete access only to platform super admin.
+    """
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if getattr(view, 'action', None) == 'connect':
+            return True
+        if request.method == 'DELETE':
+            return request.user.is_superuser
+        return obj.user == request.user or request.user.is_superuser or request.user.role == 'ADMIN'
