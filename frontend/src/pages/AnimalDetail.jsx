@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAnimal, useDeleteAnimal } from '../hooks/useAnimals';
+import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Download, Trash2, Edit } from 'lucide-react';
 
 const AnimalDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const { data: animal, isLoading } = useAnimal(id);
     const { mutate: deleteAnimal } = useDeleteAnimal();
     const [activeTab, setActiveTab] = useState('overview');
@@ -44,7 +46,11 @@ const AnimalDetail = () => {
                             </div>
                             <div className="flex gap-2">
                                 <button className="p-2 text-blue-600 hover:bg-blue-50 rounded"><Edit size={20} /></button>
-                                <button onClick={handleDelete} className="p-2 text-red-600 hover:bg-red-50 rounded"><Trash2 size={20} /></button>
+                                {user?.role !== 'FARM_WORKER' && (
+                                    <button onClick={handleDelete} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Archive animal">
+                                        <Trash2 size={20} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                         

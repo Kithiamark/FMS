@@ -7,12 +7,12 @@ import { X } from 'lucide-react';
 import Input from './Input';
 
 const schema = z.object({
-    name: z.string().min(1, "Name is required"),
-    ear_tag: z.string().min(1, "Ear tag is required"),
+    name: z.string().min(1, "Name is required").trim(),
+    ear_tag: z.string().min(1, "Ear tag is required").trim(),
     breed: z.string().min(1, "Breed is required"),
     sex: z.enum(['Bull', 'Heifer', 'Cow']),
-    date_of_birth: z.string(),
-    weight_kg: z.coerce.number().min(0),
+    date_of_birth: z.string().refine(val => !val || new Date(val) <= new Date(), "Date of birth cannot be in the future"),
+    weight_kg: z.coerce.number().positive("Weight must be greater than zero").max(2500, "Weight exceeds biological limit (2,500 kg)"),
     health_status: z.string(),
 });
 

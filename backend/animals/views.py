@@ -1,5 +1,6 @@
 from core.utils import get_user_farm
-from rest_framework import viewsets, filters, status, generics
+from core.models import AuditLog
+from rest_framework import viewsets, filters, status, generics, exceptions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,7 @@ from .serializers import (
     HealthRecordSerializer, 
     VaccinationSerializer
 )
+from vets.models import VetFarmConnection
 from accounts.permissions import IsVet, IsFarmer, IsAdmin, IsConnectedVet, IsOwnFarm
 
 class AnimalViewSet(viewsets.ModelViewSet):
@@ -22,24 +24,21 @@ class AnimalViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'ADMIN':
-            return Animal.objects.filter(is_active=True)
+        if getattr(user, 'is_superuser', False) or user.role == 'ADMIN':
+            return Animal.objects.filter(is_active=True).select_related('farm')
         farm = get_user_farm(user)
         if farm:
-            return Animal.objects.filter(farm=farm, is_active=True)
-        return Animal.objects.none()
+            return Animal.objects.filter(farm=farm, is_active=True).select_related('farm')
         if user.role == 'VETERINARIAN':
-            # Vets should access via vet-specific endpoints usually, 
-            # but if they hit this, show animals from connected farms?
-            # Or restrict this viewset to Farmers/Admins only and use VetDataViewSet?
-            # The prompt says: "Vet X cannot access Farm Y animals without an ACTIVE connection"
-            # and "Vet X CAN access Farm Y animals after connection is ACTIVE"
-            # So likely we should support it here or rely on VetDataViewSet.
-            # Given the design, VetDataViewSet is the main entry for vets.
-            # Let's return none here for vets to enforce using Vet portal, OR
-            # allow read-only if we want generic access.
-            # But the requirement says "Farmer A cannot GET /api/v1/animals/ and see Farmer B's animals"
-            return Animal.objects.none() 
+            try:
+                vet_profile = user.vet_profile
+                connected_farms = VetFarmConnection.objects.filter(
+                    vet=vet_profile, 
+                    status=VetFarmConnection.Status.ACTIVE
+                ).values_list('farm_id', flat=True)
+                return Animal.objects.filter(farm_id__in=connected_farms, is_active=True).select_related('farm')
+            except Exception:
+                return Animal.objects.none()
         return Animal.objects.none()
 
     def get_serializer_class(self):
@@ -48,13 +47,38 @@ class AnimalViewSet(viewsets.ModelViewSet):
         return AnimalDetailSerializer
 
     def perform_create(self, serializer):
-        serializer.save(farm=self.request.user.farm)
+        user = self.request.user
+        farm = get_user_farm(user)
+        if not farm:
+            raise exceptions.ValidationError({'detail': 'User has no active farm configured.'})
+
+        ear_tag = serializer.validated_data.get('ear_tag', '').strip()
+        if Animal.objects.filter(farm=farm, ear_tag=ear_tag, is_active=True).exists():
+            raise exceptions.ValidationError({'ear_tag': f"An active animal with ear tag '{ear_tag}' already exists on this farm."})
+
+        animal = serializer.save(farm=farm)
+        AuditLog.objects.create(
+            user=user,
+            event_type=AuditLog.EventType.API,
+            action='CREATE',
+            model_name='Animal',
+            object_id=str(animal.id),
+            metadata={'ear_tag': animal.ear_tag, 'breed': animal.breed, 'farm_id': farm.id}
+        )
 
     def perform_destroy(self, instance):
-        # Soft delete
+        if self.request.user.role == 'FARM_WORKER':
+            raise exceptions.PermissionDenied("Farm workers cannot delete or archive animal records.")
         instance.is_active = False
-        instance.health_status = Animal.HealthStatus.DECEASED
-        instance.save()
+        instance.save(update_fields=['is_active'])
+        AuditLog.objects.create(
+            user=self.request.user,
+            event_type=AuditLog.EventType.API,
+            action='DELETE',
+            model_name='Animal',
+            object_id=str(instance.id),
+            metadata={'ear_tag': instance.ear_tag, 'farm_id': instance.farm_id}
+        )
 
     @action(detail=True, methods=['get'])
     def qr(self, request, pk=None):
@@ -83,7 +107,8 @@ class AnimalViewSet(viewsets.ModelViewSet):
 
         serializer = HealthRecordSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(animal=animal, created_by=request.user)
+            vet_user = request.user if request.user.role == 'VETERINARIAN' else None
+            serializer.save(animal=animal, created_by=request.user, vet=vet_user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
