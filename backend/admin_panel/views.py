@@ -22,7 +22,11 @@ User = get_user_model()
 
 class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_staff
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and (request.user.is_staff or request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN')
+        )
 
 class AdminStatsView(APIView):
     permission_classes = [IsAdminUser]
@@ -63,14 +67,46 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def impersonate(self, request, pk=None):
+        if not request.user.is_superuser:
+            return Response(
+                {'error': 'Only platform super administrators can impersonate users.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         target_user = self.get_object()
         
+        if target_user == request.user:
+            return Response(
+                {'error': 'Cannot impersonate your own administrative account.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if target_user.is_superuser or target_user.is_staff or getattr(target_user, 'role', '') == 'ADMIN':
+            return Response(
+                {'error': 'Impersonation of administrative or staff accounts is forbidden.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         SystemLog.objects.create(
             level=SystemLog.Level.WARNING,
             service=SystemLog.Service.API,
-            message=f"Admin {request.user.email} impersonated {target_user.email}",
+            message=f"Superadmin {request.user.email} impersonated {target_user.email}",
             user=request.user,
             ip_address=request.META.get('REMOTE_ADDR')
+        )
+
+        AuditLog.objects.create(
+            user=request.user,
+            event_type=AuditLog.EventType.SECURITY,
+            action='USER_IMPERSONATED',
+            model_name='User',
+            object_id=str(target_user.id),
+            metadata={
+                'details': f"Superadmin {request.user.email} generated impersonation session for {target_user.email}",
+                'target_user_id': str(target_user.id),
+                'target_email': target_user.email,
+                'target_role': getattr(target_user, 'role', ''),
+                'ip_address': request.META.get('REMOTE_ADDR'),
+            }
         )
 
         refresh = RefreshToken.for_user(target_user)
@@ -81,6 +117,34 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             'refresh': str(refresh),
             'warning': 'This token expires in 15 minutes. Financial operations restricted.'
         })
+
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return Response(
+                {'error': 'Only platform super administrators can delete user accounts.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        instance = self.get_object()
+        if instance == request.user:
+            return Response(
+                {'error': 'Administrators cannot delete their own active account.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        AuditLog.objects.create(
+            user=request.user,
+            event_type=AuditLog.EventType.SECURITY,
+            action='DELETE',
+            model_name='User',
+            object_id=str(instance.id),
+            metadata={
+                'details': f"Superadmin {request.user.email} permanently deleted user {instance.email} ({instance.role})",
+                'deleted_user_id': str(instance.id),
+                'deleted_email': instance.email,
+                'deleted_role': getattr(instance, 'role', ''),
+            }
+        )
+        return super().destroy(request, *args, **kwargs)
 
 class AdminVetViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
@@ -97,12 +161,45 @@ class AdminVetViewSet(viewsets.ModelViewSet):
     def verify(self, request, pk=None):
         vet = self.get_object()
         action_type = request.data.get('action')
+        reason = request.data.get('reason', '')
         
         if action_type == 'approve':
             vet.is_verified = True
             vet.save()
+            AuditLog.objects.create(
+                user=request.user,
+                event_type=AuditLog.EventType.SECURITY,
+                action='VET_VERIFIED',
+                model_name='VetProfile',
+                object_id=str(vet.id),
+                metadata={
+                    'details': f"Admin {request.user.email} approved vet verification for {vet.user.email} (License: {vet.license_number})",
+                    'vet_id': str(vet.id),
+                    'vet_email': vet.user.email,
+                    'license_number': vet.license_number,
+                    'action': 'approve',
+                    'reason': reason,
+                }
+            )
             return Response({'status': 'approved'})
         elif action_type == 'reject':
+            vet.is_verified = False
+            vet.save()
+            AuditLog.objects.create(
+                user=request.user,
+                event_type=AuditLog.EventType.SECURITY,
+                action='VET_REJECTED',
+                model_name='VetProfile',
+                object_id=str(vet.id),
+                metadata={
+                    'details': f"Admin {request.user.email} rejected vet verification for {vet.user.email} (License: {vet.license_number})",
+                    'vet_id': str(vet.id),
+                    'vet_email': vet.user.email,
+                    'license_number': vet.license_number,
+                    'action': 'reject',
+                    'reason': reason,
+                }
+            )
             return Response({'status': 'rejected'})
         return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -112,7 +209,7 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
+        if user.is_staff or user.is_superuser or getattr(user, 'role', '') == 'ADMIN':
             return SupportTicket.objects.all().order_by('-created_at')
         return SupportTicket.objects.filter(raised_by=user).order_by('-created_at')
 
@@ -123,9 +220,14 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def messages(self, request, pk=None):
         ticket = self.get_object()
-        content = request.data.get('content')
-        TicketMessage.objects.create(ticket=ticket, sender=request.user, content=content)
-        return Response({'status': 'message sent'})
+        content = request.data.get('content', '')
+        if not content or not str(content).strip():
+            return Response(
+                {'content': ['Message content cannot be empty.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        msg = TicketMessage.objects.create(ticket=ticket, sender=request.user, content=str(content).strip())
+        return Response({'status': 'message sent', 'id': msg.id})
 
 class SystemLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminUser]
