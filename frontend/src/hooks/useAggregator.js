@@ -5,8 +5,16 @@ export const useAggregatorProfile = () => {
     return useQuery({
         queryKey: ['aggregatorProfile'],
         queryFn: async () => {
-            const { data } = await axios.get('/aggregators/profiles/');
-            return data[0]; // Assuming the user only has one profile
+            try {
+                const { data } = await axios.get('/aggregators/profiles/my-profile/');
+                return data;
+            } catch (err) {
+                if (err.response?.status === 404) {
+                    const { data } = await axios.get('/aggregators/profiles/');
+                    return data?.results ? data.results[0] : (Array.isArray(data) ? data[0] : data);
+                }
+                throw err;
+            }
         },
     });
 };
@@ -16,7 +24,7 @@ export const useAggregatorConnections = () => {
         queryKey: ['aggregatorConnections'],
         queryFn: async () => {
             const { data } = await axios.get('/aggregators/connections/');
-            return data;
+            return data?.results || (Array.isArray(data) ? data : []);
         },
     });
 };
@@ -26,7 +34,7 @@ export const useMilkCollections = () => {
         queryKey: ['milkCollections'],
         queryFn: async () => {
             const { data } = await axios.get('/aggregators/collections/');
-            return data;
+            return data?.results || (Array.isArray(data) ? data : []);
         },
     });
 };
@@ -48,7 +56,8 @@ export const useUpdateAggregatorProfileMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, ...data }) => {
-            const res = await axios.patch(`/aggregators/profiles/${id}/`, data);
+            const endpoint = id ? `/aggregators/profiles/${id}/` : '/aggregators/profiles/my-profile/';
+            const res = await axios.patch(endpoint, data);
             return res.data;
         },
         onSuccess: () => {

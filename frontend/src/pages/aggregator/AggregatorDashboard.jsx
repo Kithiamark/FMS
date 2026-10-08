@@ -99,19 +99,35 @@ const AggregatorDashboard = () => {
 
     const handleLogCollection = async (e) => {
         e.preventDefault();
+        const parsedLitres = parseFloat(litres);
+        const parsedPrice = parseFloat(price);
+        if (!selectedConnection) {
+            addToast('error', 'Please select a connected dairy farm.');
+            return;
+        }
+        if (isNaN(parsedLitres) || parsedLitres <= 0) {
+            addToast('error', 'Litres collected must be greater than zero.');
+            return;
+        }
+        if (isNaN(parsedPrice) || parsedPrice <= 0) {
+            addToast('error', 'Price per litre must be greater than zero.');
+            return;
+        }
         try {
             await logCollectionMutation.mutateAsync({
                 connection: selectedConnection,
                 date: new Date().toISOString().split('T')[0],
-                litres_collected: parseFloat(litres),
-                price_per_litre: parseFloat(price),
+                litres_collected: parsedLitres,
+                price_per_litre: parsedPrice,
                 payment_status: 'PAID'
             });
             addToast('success', 'Collection logged successfully.');
             setIsLogging(false);
             setLitres('');
-        } catch {
-            addToast('error', 'Failed to log collection.');
+        } catch (err) {
+            const errData = err.response?.data;
+            const msg = errData?.detail || errData?.connection?.[0] || errData?.non_field_errors?.[0] || 'Failed to log collection.';
+            addToast('error', typeof msg === 'string' ? msg : 'Failed to log collection.');
         }
     };
 
