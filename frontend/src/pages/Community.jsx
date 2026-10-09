@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   BadgeDollarSign,
@@ -21,6 +22,43 @@ import {
   useInviteCommunityMember,
 } from '../hooks/useCommunity';
 import { useToast } from '../components/ui/Toast';
+import { useAuth } from '../context/AuthContext';
+
+const renderRoleBadge = (role) => {
+  switch (role) {
+    case 'AGGREGATOR':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+          Aggregator / Buyer
+        </span>
+      );
+    case 'VETERINARIAN':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-900/40 dark:text-purple-200">
+          Veterinarian
+        </span>
+      );
+    case 'ADMIN':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+          Platform Admin
+        </span>
+      );
+    case 'FARM_WORKER':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+          Farm Worker
+        </span>
+      );
+    case 'FARMER':
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+          Farmer
+        </span>
+      );
+  }
+};
 
 const postTypes = [
   ['DISCUSSION', 'Discussion'],
@@ -48,6 +86,8 @@ const typeIcon = {
 };
 
 const Community = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const { data: communities = [], isLoading: communitiesLoading } = useCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = useState('');
   const selectedCommunity = useMemo(() => {
@@ -218,7 +258,31 @@ const Community = () => {
                   <h3 className="font-heading text-lg font-bold text-slate-950 dark:text-slate-100">{post.title}</h3>
                   <p className="mt-1 text-slate-700 dark:text-slate-300">{post.body}</p>
                   {post.preferred_pickup_time && <p className="mt-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">Best time: {post.preferred_pickup_time}</p>}
-                  <p className="mt-3 text-xs text-slate-400">{post.county || 'All counties'} • {post.author_name || 'Farmer'} • {new Date(post.created_at).toLocaleString()}</p>
+                  
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-200/60 pt-2 text-xs text-slate-400 dark:border-slate-800">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{post.author_name || 'Member'}</span>
+                    {post.author_organization && (
+                      <span className="font-medium text-slate-600 dark:text-slate-300">• {post.author_organization}</span>
+                    )}
+                    {renderRoleBadge(post.author_role || 'FARMER')}
+                    <span>• {post.county || 'All counties'}</span>
+                    <span className="ml-auto">{new Date(post.created_at).toLocaleString()}</span>
+                  </div>
+
+                  {user?.role === 'AGGREGATOR' && post.post_type === 'SURPLUS' && (
+                    <div className="mt-2.5 flex items-center justify-between rounded-xl border border-blue-200/60 bg-blue-50/70 p-2.5 dark:border-blue-900/40 dark:bg-blue-950/40">
+                      <span className="text-xs font-medium text-blue-900 dark:text-blue-200">
+                        Direct Supplier Batch Available
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/aggregator/dashboard?tab=messages')}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition"
+                      >
+                        <MessageCircle size={13} /> Message Farmer
+                      </button>
+                    </div>
+                  )}
                 </article>
               );
             }) : (
@@ -229,20 +293,31 @@ const Community = () => {
           </div>
 
           <div className="border-t border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                ['SURPLUS', Milk, 'Surplus milk'],
-                ['LOW_MILK', TrendingDown, 'Low milk'],
-                ['PRICE', BadgeDollarSign, 'Milk price'],
-              ].map(([type, icon, label]) => {
-                const ActionIcon = icon;
-                return (
-                  <button key={type} onClick={() => { setForm({ ...form, post_type: type }); setActiveModal('share-post'); }} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-800 hover:bg-emerald-50 hover:text-emerald-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-emerald-500/10">
-                    <ActionIcon size={18} /> {label}
-                  </button>
-                );
-              })}
-            </div>
+            {user?.role === 'AGGREGATOR' ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button onClick={() => { setForm({ ...form, post_type: 'PRICE' }); setActiveModal('share-post'); }} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-200">
+                  <BadgeDollarSign size={18} /> Offer Buying Price
+                </button>
+                <button onClick={() => { setForm({ ...form, post_type: 'ALERT' }); setActiveModal('share-post'); }} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-800 hover:bg-slate-200 dark:bg-slate-950 dark:text-slate-200">
+                  <AlertTriangle size={18} /> Route / Dairy Alert
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  ['SURPLUS', Milk, 'Surplus milk'],
+                  ['LOW_MILK', TrendingDown, 'Low milk'],
+                  ['PRICE', BadgeDollarSign, 'Milk price'],
+                ].map(([type, icon, label]) => {
+                  const ActionIcon = icon;
+                  return (
+                    <button key={type} onClick={() => { setForm({ ...form, post_type: type }); setActiveModal('share-post'); }} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-800 hover:bg-emerald-50 hover:text-emerald-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-emerald-500/10">
+                      <ActionIcon size={18} /> {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <button onClick={() => setActiveModal('share-post')} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800">
               <Plus size={18} /> Share community update
             </button>
@@ -258,10 +333,19 @@ const Community = () => {
           <div className="mt-5 space-y-2">
             {(selectedCommunity?.members || []).length ? selectedCommunity.members.map(member => (
               <div key={member.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-700 font-bold text-white">{(member.display_name || member.user_name || 'F').charAt(0)}</div>
-                <div>
-                  <p className="font-bold text-slate-900 dark:text-slate-100">{member.display_name || member.user_name}</p>
-                  <p className="text-xs text-slate-500">{member.role} • {member.farm_name}</p>
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-700 font-bold text-white">
+                  {(member.display_name || member.user_name || 'M').charAt(0)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold text-slate-900 dark:text-slate-100 text-sm">{member.display_name || member.user_name}</p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                    {renderRoleBadge(member.user_role || (member.role === 'admin' ? 'FARMER' : member.role?.toUpperCase()))}
+                    {(member.organization_name || member.farm_name) && (
+                      <span className="truncate text-[11px] text-slate-500">
+                        • {member.organization_name || member.farm_name}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             )) : (

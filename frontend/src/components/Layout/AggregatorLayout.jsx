@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, BrainCircuit, MessageSquare, Bell, 
-  LogOut, Menu, X, Droplets
+  LogOut, Menu, X, Droplets, Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../ui/Button';
@@ -17,6 +17,7 @@ const AggregatorSidebar = ({ isOpen, toggle, isMobile }) => {
     { icon: LayoutDashboard, label: 'Overview', path: '/aggregator/dashboard' },
     { icon: BrainCircuit, label: 'Intelligence', path: '/aggregator/dashboard?tab=intelligence' },
     { icon: MessageSquare, label: 'Chat', path: '/aggregator/dashboard?tab=messages' },
+    { icon: Users, label: 'Community', path: '/community' },
     { icon: Bell, label: 'Alerts', path: '/aggregator/dashboard?tab=alerts' },
   ];
 
@@ -46,7 +47,12 @@ const AggregatorSidebar = ({ isOpen, toggle, isMobile }) => {
 
         <nav className="flex-1 py-6 px-4 space-y-2">
           {navItems.map((item) => {
-            const isActive = location.search.includes(item.path.split('?')[1]) || (item.path === '/aggregator/dashboard' && !location.search);
+            const isCommunity = item.path === '/community';
+            const isActive = isCommunity
+              ? location.pathname === '/community'
+              : (item.path.includes('?') 
+                  ? location.search.includes(item.path.split('?')[1]) 
+                  : (location.pathname === '/aggregator/dashboard' && !location.search));
             return (
               <Link 
                 key={item.label} 

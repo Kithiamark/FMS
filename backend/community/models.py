@@ -12,7 +12,7 @@ class CommunityPost(models.Model):
         LOW_MILK = 'LOW_MILK', 'Low Milk Flag'
 
     community = models.ForeignKey('DairyCommunity', on_delete=models.CASCADE, related_name='posts', null=True, blank=True)
-    farm = models.ForeignKey('farms.Farm', on_delete=models.CASCADE, related_name='community_posts')
+    farm = models.ForeignKey('farms.Farm', on_delete=models.SET_NULL, related_name='community_posts', null=True, blank=True)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='community_posts')
     post_type = models.CharField(max_length=20, choices=PostType.choices, default=PostType.DISCUSSION)
     county = models.CharField(max_length=100, blank=True)
@@ -48,7 +48,7 @@ class DairyCommunity(models.Model):
 class CommunityMember(models.Model):
     community = models.ForeignKey(DairyCommunity, on_delete=models.CASCADE, related_name='members')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dairy_community_memberships')
-    farm = models.ForeignKey('farms.Farm', on_delete=models.CASCADE, related_name='community_memberships')
+    farm = models.ForeignKey('farms.Farm', on_delete=models.SET_NULL, related_name='community_memberships', null=True, blank=True)
     display_name = models.CharField(max_length=120, blank=True)
     role = models.CharField(max_length=30, default='member')
     joined_at = models.DateTimeField(auto_now_add=True)

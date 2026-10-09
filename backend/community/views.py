@@ -18,10 +18,16 @@ class DairyCommunityViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         community = serializer.save(created_by=self.request.user)
         farm = get_user_farm(self.request.user)
+        display_name = self.request.user.full_name
+        if self.request.user.role == 'AGGREGATOR' and hasattr(self.request.user, 'aggregator_profile'):
+            org = self.request.user.aggregator_profile.organization_name
+            display_name = f"{self.request.user.full_name} ({org})" if org else self.request.user.full_name
+        elif self.request.user.role == 'VETERINARIAN' and hasattr(self.request.user, 'vet_profile'):
+            display_name = f"Dr. {self.request.user.full_name}"
         CommunityMember.objects.get_or_create(
             community=community,
             user=self.request.user,
-            defaults={'farm': farm, 'display_name': self.request.user.full_name, 'role': 'admin'},
+            defaults={'farm': farm, 'display_name': display_name, 'role': 'admin' if self.request.user.role == 'FARMER' else self.request.user.role.lower()},
         )
         AuditLog.objects.create(
             user=self.request.user,
@@ -32,6 +38,27 @@ class DairyCommunityViewSet(viewsets.ModelViewSet):
             object_id=str(community.id),
             metadata={'name': community.name, 'county': community.county},
         )
+
+    @action(detail=True, methods=['post'], url_path='join')
+    def join(self, request, pk=None):
+        community = self.get_object()
+        farm = get_user_farm(request.user)
+        display_name = request.user.full_name
+        if request.user.role == 'AGGREGATOR' and hasattr(request.user, 'aggregator_profile'):
+            org = request.user.aggregator_profile.organization_name
+            display_name = f"{request.user.full_name} ({org})" if org else request.user.full_name
+        elif request.user.role == 'VETERINARIAN' and hasattr(request.user, 'vet_profile'):
+            display_name = f"Dr. {request.user.full_name}"
+        role = 'member' if request.user.role == 'FARMER' else request.user.role.lower()
+        member, created = CommunityMember.objects.get_or_create(
+            community=community,
+            user=request.user,
+            defaults={'farm': farm, 'display_name': display_name, 'role': role},
+        )
+        return Response({
+            'message': 'Joined successfully.' if created else 'Already a member.',
+            'member': CommunityMemberSerializer(member).data
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='invite')
     def invite(self, request, pk=None):
@@ -69,7 +96,14 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
         community = serializer.validated_data.get('community')
         if not community:
             community = DairyCommunity.objects.first()
-        post = serializer.save(farm=farm, author=self.request.user, community=community)
+        county = serializer.validated_data.get('county')
+        if not county:
+            if hasattr(self.request.user, 'aggregator_profile'):
+                counties = self.request.user.aggregator_profile.operating_counties
+                county = counties[0] if isinstance(counties, list) and len(counties) > 0 else (counties or '')
+            elif farm:
+                county = farm.county
+        post = serializer.save(farm=farm, author=self.request.user, community=community, county=county or '')
         AuditLog.objects.create(
             user=self.request.user,
             farm=farm,

@@ -39,7 +39,26 @@ import AdminSettings from './pages/admin/AdminSettings';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 import MainLayout from './components/Layout/MainLayout';
+import { AggregatorLayout } from './components/Layout/AggregatorLayout';
 import './i18n';
+
+const CommunityPage = () => {
+    const { user } = useAuth();
+    if (user?.role === 'AGGREGATOR') {
+        return (
+            <AggregatorLayout>
+                <div className="p-4 md:p-8">
+                    <Community />
+                </div>
+            </AggregatorLayout>
+        );
+    }
+    return (
+        <MainLayout>
+            <Community />
+        </MainLayout>
+    );
+};
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user, loading } = useAuth();
@@ -118,8 +137,8 @@ const AppRoutes = () => {
                 </ProtectedRoute>
             } />
             <Route path="/community" element={
-                <ProtectedRoute allowedRoles={['FARMER']}>
-                    <MainLayout><Community /></MainLayout>
+                <ProtectedRoute allowedRoles={['FARMER', 'AGGREGATOR', 'VETERINARIAN', 'ADMIN']}>
+                    <CommunityPage />
                 </ProtectedRoute>
             } />
             <Route path="/find-vet" element={
