@@ -241,7 +241,7 @@ const FindBuyer = () => {
                         </span>
                         <Button 
                           size="sm" 
-                          onClick={() => navigate('/messages')} 
+                          onClick={() => navigate(`/messages?connection_id=${existingConn?.id}`)} 
                           className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <MessageSquare size={14} />

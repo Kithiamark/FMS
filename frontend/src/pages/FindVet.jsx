@@ -142,7 +142,7 @@ const FindVet = () => {
                                     </div>
 
                                     <div className="mt-4 flex gap-2">
-                                        <Link to="/messages" className="flex-1">
+                                        <Link to={`/messages?vet_id=${vet.id}`} className="flex-1">
                                             <Button variant="ghost" className="w-full text-xs flex items-center justify-center gap-1.5 border border-emerald-200 hover:bg-emerald-100/50">
                                                 <MessageSquare size={14} /> Message
                                             </Button>

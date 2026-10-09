@@ -35,12 +35,14 @@ const Register = () => {
                 full_name: data.full_name,
                 phone_number: formattedPhone,
             });
+            let testOtp = null;
             try {
-                await api.post('/auth/request-otp/', { phone_number: formattedPhone });
+                const otpRes = await api.post('/auth/request-otp/', { phone_number: formattedPhone });
+                testOtp = otpRes.data?.test_mode_otp || null;
             } catch (otpErr) {
                 console.error("Initial OTP trigger error:", otpErr);
             }
-            navigate('/otp', { state: { phone_number: formattedPhone } });
+            navigate('/otp', { state: { phone_number: formattedPhone, test_otp: testOtp } });
         } catch (error) {
             const details = error.response?.data;
             setServerError(

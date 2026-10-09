@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ShieldCheck, ArrowRight, Lock, CheckCircle2, AlertCircle, KeyRound, Sparkles } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Lock, CheckCircle2, AlertCircle, KeyRound, Sparkles, Eye, EyeOff } from 'lucide-react';
 import api, { setAuthToken } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
+import { normalizeKenyanPhone } from '../utils/phone';
 
 const OTPVerification = () => {
     const { t } = useTranslation();
@@ -12,8 +13,10 @@ const OTPVerification = () => {
     const location = useLocation();
     const { refreshUser } = useAuth();
 
-    const [phoneNumber, setPhoneNumber] = useState(location.state?.phone_number || '');
-    const [otp, setOtp] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState(
+        location.state?.phone_number ? normalizeKenyanPhone(location.state.phone_number) : ''
+    );
+    const [otp, setOtp] = useState(location.state?.test_otp || location.state?.test_mode_otp || '');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +26,7 @@ const OTPVerification = () => {
     const [step, setStep] = useState(1); // 1: Verify OTP, 2: Set Password & Accept Indemnity
     const [timer, setTimer] = useState(60);
     const [errorMsg, setErrorMsg] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -33,27 +37,40 @@ const OTPVerification = () => {
     }, []);
 
     const handleResend = async () => {
-        if (!phoneNumber) {
-            setErrorMsg('Please provide a valid phone number');
+        const normalized = normalizeKenyanPhone(phoneNumber);
+        if (!normalized) {
+            setErrorMsg('Please provide a valid Kenyan phone number (e.g. 712 345 678)');
             return;
         }
         setErrorMsg('');
+        setSuccessMsg('');
         setTimer(60);
         try {
-            await api.post('/auth/request-otp/', { phone_number: phoneNumber });
+            const res = await api.post('/auth/request-otp/', { phone_number: normalized });
+            if (res.data?.test_mode_otp) {
+                setOtp(res.data.test_mode_otp);
+                setSuccessMsg(`Test OTP code generated: ${res.data.test_mode_otp}`);
+            } else {
+                setSuccessMsg('A new verification code has been dispatched.');
+            }
         } catch (err) {
-            setErrorMsg(err.response?.data?.phone_number?.[0] || 'Failed to request new code.');
+            const data = err.response?.data;
+            setErrorMsg(
+                data?.phone_number?.[0] || data?.error || data?.detail || 'Failed to request new code.'
+            );
         }
     };
 
     const handleProceedToStep2 = (e) => {
         e.preventDefault();
         setErrorMsg('');
-        if (!phoneNumber) {
+        setSuccessMsg('');
+        const normalized = normalizeKenyanPhone(phoneNumber);
+        if (!normalized) {
             setErrorMsg('Phone number is required.');
             return;
         }
-        if (!otp || otp.length !== 6) {
+        if (!otp || otp.trim().length !== 6) {
             setErrorMsg('Please enter a valid 6-digit verification code.');
             return;
         }
@@ -63,6 +80,7 @@ const OTPVerification = () => {
     const handleCompleteVerification = async (e) => {
         e.preventDefault();
         setErrorMsg('');
+        setSuccessMsg('');
 
         if (!password || password.length < 6) {
             setErrorMsg('Password must be at least 6 characters.');
@@ -82,8 +100,8 @@ const OTPVerification = () => {
         setLoading(true);
         try {
             const payload = {
-                phone_number: phoneNumber,
-                otp: otp,
+                phone_number: normalizeKenyanPhone(phoneNumber),
+                otp: otp.trim(),
                 password: password,
                 indemnity_agreed: true
             };
@@ -95,14 +113,28 @@ const OTPVerification = () => {
                 localStorage.setItem('access_token', access);
                 localStorage.setItem('refresh_token', refresh);
                 setAuthToken(access);
-                await refreshUser();
-                navigate('/dashboard');
+                const user = await refreshUser();
+                if (user?.role === 'ADMIN') {
+                    navigate('/admin/dashboard');
+                } else if (user?.role === 'VETERINARIAN') {
+                    navigate('/vet/dashboard');
+                } else if (user?.role === 'AGGREGATOR') {
+                    navigate('/aggregator/dashboard');
+                } else {
+                    navigate('/dashboard');
+                }
             } else {
                 navigate('/login');
             }
         } catch (err) {
             const errData = err.response?.data;
-            setErrorMsg(errData?.error || errData?.detail || 'Verification failed. Please check your code.');
+            setErrorMsg(
+                errData?.error || 
+                errData?.detail || 
+                (errData?.otp ? (Array.isArray(errData.otp) ? errData.otp.join(' ') : errData.otp) : null) ||
+                (errData?.phone_number ? (Array.isArray(errData.phone_number) ? errData.phone_number.join(' ') : errData.phone_number) : null) ||
+                'Verification failed. Please check your code.'
+            );
         } finally {
             setLoading(false);
         }
@@ -144,6 +176,13 @@ const OTPVerification = () => {
                     </div>
                 )}
 
+                {successMsg && (
+                    <div className="mb-5 rounded-xl border border-emerald-200/90 bg-emerald-50/90 p-3.5 text-sm text-emerald-800 flex items-start gap-2.5 backdrop-blur-sm">
+                        <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-600" />
+                        <span className="leading-snug">{successMsg}</span>
+                    </div>
+                )}
+
                 {step === 1 && (
                     <form onSubmit={handleProceedToStep2} className="space-y-5">
                         <div>
@@ -154,10 +193,15 @@ const OTPVerification = () => {
                                 </span>
                                 <input
                                     required
-                                    value={phoneNumber.startsWith('+254') ? phoneNumber.slice(4) : phoneNumber}
+                                    type="tel"
+                                    value={phoneNumber ? (phoneNumber.startsWith('+254') ? phoneNumber.slice(4) : phoneNumber) : ''}
                                     onChange={(e) => {
                                         const raw = e.target.value.replace(/[^0-9]/g, '');
-                                        setPhoneNumber(raw ? `+254${raw.replace(/^0+/, '')}` : '');
+                                        if (!raw) {
+                                            setPhoneNumber('');
+                                        } else {
+                                            setPhoneNumber(normalizeKenyanPhone(raw));
+                                        }
                                     }}
                                     placeholder="712 345 678"
                                     className="flex-1 min-w-0 bg-transparent px-4 py-3 text-slate-900 focus:outline-none text-sm"
