@@ -1,13 +1,20 @@
+import logging
 from datetime import datetime, timedelta
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
+import requests
+from django.conf import settings
+from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from animals.models import Animal, HealthRecord, VaccinationRecord
+from core.utils import get_user_farm
 from dairy.models import MilkRecord
-from django.utils import timezone
-from django.db.models import Sum
+
+logger = logging.getLogger(__name__)
 
 AI_SERVICE_URL = "http://localhost:8001"
 AI_API_KEY = "dev-secret-key"
@@ -148,7 +155,10 @@ class FarmHealthOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        animals = Animal.objects.filter(farm=request.user.farm, is_active=True)[:5]
+        farm = get_user_farm(request.user)
+        if not farm:
+            return Response([])
+        animals = Animal.objects.filter(farm=farm, is_active=True)[:5]
         results = []
         
         for animal in animals:
@@ -185,7 +195,27 @@ class PersonalizedRecommendationsView(APIView):
         # Recommendations combine learned milk history with rule-based farm signals.
         # Add new recommendation types here, but keep the list item shape stable:
         # type, priority, title, message, action, and link.
-        farm = request.user.farm
+        farm = get_user_farm(request.user)
+        if not farm:
+            return Response({
+                "model": {
+                    "name": "Farm Learning Recommendations",
+                    "version": "1.0",
+                    "method": "Linear regression over each animal's milk history plus rule-based herd health signals",
+                    "confidence": 0.0,
+                    "learned_from_records": 0,
+                },
+                "summary": {
+                    "active_animals": 0,
+                    "milk_records_30_days": 0,
+                    "last_7_day_total": 0.0,
+                    "previous_7_day_total": 0.0,
+                    "production_change_pct": 0.0,
+                    "month_to_date_total": 0.0,
+                },
+                "animal_predictions": [],
+                "recommendations": [],
+            })
         today = timezone.now().date()
         month_start = today.replace(day=1)
         animals = Animal.objects.filter(farm=farm, is_active=True)
@@ -291,3 +321,227 @@ class PersonalizedRecommendationsView(APIView):
             "recommendations": recommendations,
         }
         return Response(response)
+
+
+def _generate_fallback_response(message: str, farm_context: dict) -> str:
+    msg = message.lower()
+    farm_name = farm_context.get("farm_name", "your farm")
+    county = farm_context.get("county", "Kenya")
+    active_animals = farm_context.get("active_animals", 0)
+    sick_animals = farm_context.get("sick_animals", 0)
+    last_7_milk = farm_context.get("last_7_days_milk_litres", 0)
+
+    if any(k in msg for k in ["mastitis", "udder", "teat", "swollen", "clots"]):
+        return (
+            f"**Mastitis Management & Udder Health Guidance for {farm_name}:**\n\n"
+            "1. **Detection & Testing:** Perform a California Mastitis Test (CMT) immediately on all four quarters before milking. Check for thick gel formation or milk flaking.\n"
+            "2. **Milking Protocol:** Always milk uninfected cows first. Affected cows must be milked last into a separate container, and their milk must be discarded.\n"
+            "3. **Teat Dipping:** Dip teats post-milking in a recognized antiseptic dip (e.g. 0.5% - 1.0% iodophor) and keep cows standing for at least 30 minutes with fresh feed.\n"
+            "4. **Bedding & Hygiene:** Ensure the cubicle or stall bedding is dry, clean, and disinfected with agricultural lime.\n"
+            "5. **Veterinary Treatment:** If udder swelling, hardness, or fever is present, contact your local veterinary surgeon for targeted intramammary antibiotic infusion and anti-inflammatory therapy. Complete the full course and observe withdrawal periods."
+        )
+
+    if any(k in msg for k in ["feed", "nutrition", "silage", "napier", "hay", "ration", "concentrate", "diet", "water"]):
+        return (
+            f"**Dairy Feeding & Nutrition Plan (Tailored for {county}):**\n\n"
+            "1. **Dry Matter Intake:** A lactating cow requires ~3% to 3.5% of her body weight in dry matter daily (e.g., 13-15 kg DM for a 450 kg cow).\n"
+            "2. **Forage Foundation (70%):** Provide high-quality chopped Napier grass (wilted), maize silage, or Boma Rhodes hay. Chopping to 2-3 cm reduces waste and improves rumen digestion.\n"
+            "3. **Dairy Meal Supplementation (30%):** Feed 1 kg of commercial dairy meal (16% crude protein) for every 1.5 - 2.0 Litres of milk produced above maintenance (~5 L base).\n"
+            "4. **Minerals & Salts:** Supply 100-150g of balanced dairy mineral powder daily, plus free-choice rock salt / mineral lick.\n"
+            "5. **Water Ad Libitum:** Ensure unlimited, clean drinking water. High-producing cows require 60 to 100 Litres of water daily; insufficient water immediately drops milk yield."
+        )
+
+    if any(k in msg for k in ["heat", "breeding", "inseminat", "ai", "calv", "bull", "estrus"]):
+        return (
+            f"**Breeding & Heat Detection Protocol for {farm_name}:**\n\n"
+            "1. **Primary Signs of Standing Heat:** The cow stands firmly when mounted by herd mates. Secondary signs include clear, stringy vulval mucus discharge, restlessness, swelling of vulva, and drop in milk yield.\n"
+            "2. **The AM-PM Breeding Rule:**\n"
+            "   - If heat is observed in the **Morning**, inseminate in the **Evening** of the same day.\n"
+            "   - If heat is observed in the **Evening**, inseminate the next **Morning** (within 10-14 hours).\n"
+            "3. **AI Provider Quality:** Source certified semen from authorized artificial insemination (AI) technicians (e.g. via KAGRC or licensed distributors) with high milk trait indices suited for your crossbreeds.\n"
+            "4. **Record Keeping:** Log insemination dates immediately in FMS so calving dates, gestation countdowns, and drying-off dates (at 7 months pregnant) are automatically tracked."
+        )
+
+    if any(k in msg for k in ["buyer", "market", "price", "aggregator", "offtake", "sell", "cooperative"]):
+        return (
+            f"**Milk Commercialization & Aggregator Off-Take in {county}:**\n\n"
+            "1. **Find Verified Buyers:** You can discover active aggregators and chilling hubs operating in your county directly in the **Find Buyers** directory (`/find-buyer`).\n"
+            "2. **Quality Standards for Top Payouts:**\n"
+            "   - **Alcohol Test (68% or 72%):** Ensure milk does not coagulate to pass freshness checks.\n"
+            "   - **Lactometer Reading:** Specific gravity should be between 1.028 and 1.032 to verify zero water adulteration.\n"
+            "   - **Hygiene:** Cool milk promptly to under 4°C or deliver within 2 hours of morning milking to avoid rejection.\n"
+            "3. **Payment Security:** Agree on clear payment schedules (bi-weekly or monthly M-Pesa/Bank payout) and track every collection slip against your FMS records."
+        )
+
+    if any(k in msg for k in ["calf", "calves", "colostrum", "wean", "scour"]):
+        return (
+            f"**Calf Rearing & Health Checklist:**\n\n"
+            "1. **Colostrum Rule of Gold:** Feed the newborn calf 10% of its body weight (~3 to 4 Litres) of clean, high-quality colostrum within the **first 2 hours** of life, repeated at 12 hours.\n"
+            "2. **Navel Care:** Dip the navel cord in 7% tincture of iodine immediately after birth to prevent navel ill and joint ill.\n"
+            "3. **Early Solid Feeding:** Introduce fresh calf starter pellets (18-20% protein) and clean water from day 7. Introduce good quality fine hay (e.g., Lucerne/Rhodes) from week 2.\n"
+            "4. **Weaning Target:** Wean calves at 8-10 weeks only when they are steadily consuming at least 1.0 kg of calf starter daily.\n"
+            "5. **Calf Scours:** If diarrhea occurs, isolate the calf, administer oral rehydration electrolytes immediately, and call your veterinarian."
+        )
+
+    if any(k in msg for k in ["disease", "sick", "ecf", "tick", "fever", "fmd", "vaccin"]):
+        return (
+            f"**Herd Health & Disease Prevention for {farm_name}:**\n\n"
+            f"*(Currently tracking {sick_animals} sick/monitoring animal(s) out of {active_animals} total head)*\n\n"
+            "1. **Tick-Borne Diseases (ECF, Anaplasmosis, Babesiosis):** Strict acaricide spray or dip every 7 days is essential in Kenya. Check for swollen lymph nodes (especially behind the ear and in front of shoulder).\n"
+            "2. **Vaccination Calendar:** Keep current with mandatory and regional vaccines:\n"
+            "   - Foot and Mouth Disease (FMD) — Every 6 months\n"
+            "   - Anthrax & Blackquarter — Annually\n"
+            "   - Lumpy Skin Disease (LSD) — Annually\n"
+            "   - ECF Muguga Cocktail — Once in calfhood for lifelong protection\n"
+            "3. **Vital Signs:** Normal rectal temperature is 38.5°C to 39.2°C. A temperature exceeding 39.5°C indicates fever.\n"
+            "4. **Emergency:** For recumbent cattle, bloody discharge, severe bloat, or rapid breathing, isolate immediately and contact your certified veterinarian."
+        )
+
+    return (
+        f"**Welcome to Arvion AI Dairy Assistant!**\n\n"
+        f"I am actively monitoring your farm profile at **{farm_name}** ({county}):\n"
+        f"- 🐄 **Active Cattle:** {active_animals} animals\n"
+        f"- 🩺 **Animals in Care/Watch:** {sick_animals}\n"
+        f"- 🥛 **Recent 7-Day Output:** {last_7_milk} Litres\n\n"
+        "Here are key areas I can help you with today:\n"
+        "- 🌾 **Feed & Ration Formulation:** Balancing silage, Napier, and dairy meal concentrates for peak milk production.\n"
+        "- 🩺 **Herd Health & Mastitis Control:** Step-by-step CMT protocols, biosecurity, and tick-borne disease prevention.\n"
+        "- 🐄 **Breeding & Insemination:** Optimal timing for artificial insemination (AM-PM rule) and heat detection.\n"
+        "- 🤝 **Commercial Aggregation:** Connecting with county milk buyers on `/find-buyer` and maintaining quality standards.\n\n"
+        "*What specific challenge or question can I assist you with right now?*"
+    )
+
+
+class AIAssistantChatView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user_message = (request.data.get("message") or "").strip()
+        if not user_message:
+            return Response(
+                {"error": "Message is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        history = request.data.get("history", [])
+        farm = get_user_farm(request.user)
+
+        if farm:
+            animals_qs = Animal.objects.filter(farm=farm, is_active=True)
+            active_animals = animals_qs.count()
+            sick_animals = animals_qs.filter(health_status=Animal.HealthStatus.SICK).count()
+            breeds = [b for b in animals_qs.values_list("breed", flat=True).distinct()[:5] if b]
+            today = timezone.now().date()
+            last_7_milk = float(
+                MilkRecord.objects.filter(
+                    animal__farm=farm,
+                    date__gte=today - timedelta(days=7),
+                ).aggregate(total=Sum("total_yield"))["total"]
+                or 0
+            )
+
+            farm_context = {
+                "farm_name": farm.name,
+                "county": farm.county or "Kenya",
+                "active_animals": active_animals,
+                "sick_animals": sick_animals,
+                "breeds": breeds,
+                "last_7_days_milk_litres": round(last_7_milk, 1),
+            }
+        else:
+            farm_context = {
+                "farm_name": "General Dairy Operations",
+                "county": "Kenya",
+                "active_animals": 0,
+                "sick_animals": 0,
+                "breeds": [],
+                "last_7_days_milk_litres": 0.0,
+            }
+
+        gemini_api_key = getattr(settings, "GEMINI_API_KEY", "") or ""
+
+        if gemini_api_key:
+            try:
+                system_instruction = (
+                    "You are Arvion AI, an expert Kenyan agricultural & dairy management assistant embedded in the Farm Management System (FMS).\n"
+                    "You provide actionable, practical advice for dairy farmers in Kenya.\n"
+                    f"Farmer's Live Context:\n"
+                    f"- Farm Name: {farm_context.get('farm_name')}\n"
+                    f"- County: {farm_context.get('county')}\n"
+                    f"- Active Cattle Herd: {farm_context.get('active_animals')} animals\n"
+                    f"- Sick/Observing Animals: {farm_context.get('sick_animals')}\n"
+                    f"- Key Breeds: {', '.join(farm_context.get('breeds', [])) or 'Friesian / Ayrshire / Crosses'}\n"
+                    f"- Last 7 Days Milk Output: {farm_context.get('last_7_days_milk_litres')} Litres\n\n"
+                    "Guidelines:\n"
+                    "1. Focus on practical Kenyan dairy practices (e.g. silage, Napier grass, Rhodes grass, dairy meal concentrate balancing, mineral salts, clean water access).\n"
+                    "2. Cover disease prevention, mastitis detection via CMT, tick-borne diseases (ECF), and hygiene protocols.\n"
+                    "3. Support milk marketing, fair aggregator pricing, chilling storage, and quality testing (alcohol/density).\n"
+                    "4. Keep responses structured, concise, and encouraging using bullet points.\n"
+                    "5. Always advise consulting a certified local veterinary officer for prescription medicines or severe clinical symptoms."
+                )
+
+                gemini_contents = []
+                if isinstance(history, list):
+                    for turn in history[-6:]:
+                        role = "model" if turn.get("role") in ["assistant", "model"] else "user"
+                        content_text = turn.get("content") or (
+                            turn.get("parts", [{}])[0].get("text")
+                            if isinstance(turn.get("parts"), list) and turn.get("parts")
+                            else ""
+                        )
+                        if content_text:
+                            gemini_contents.append({
+                                "role": role,
+                                "parts": [{"text": str(content_text)}],
+                            })
+
+                gemini_contents.append({
+                    "role": "user",
+                    "parts": [{"text": user_message}],
+                })
+
+                payload = {
+                    "system_instruction": {
+                        "parts": [{"text": system_instruction}],
+                    },
+                    "contents": gemini_contents,
+                    "generationConfig": {
+                        "temperature": 0.4,
+                        "maxOutputTokens": 1000,
+                    },
+                }
+
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={gemini_api_key}"
+                resp = requests.post(
+                    url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=12,
+                )
+
+                if resp.status_code == 200:
+                    resp_data = resp.json()
+                    candidates = resp_data.get("candidates", [])
+                    if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
+                        ai_text = candidates[0]["content"]["parts"][0].get("text", "")
+                        if ai_text:
+                            return Response({
+                                "response": ai_text,
+                                "provider": "gemini-3.8-flash",
+                                "mode": "live",
+                                "farm_context": farm_context,
+                            })
+                else:
+                    logger.warning("Gemini API returned status %s: %s", resp.status_code, resp.text)
+            except Exception as e:
+                logger.warning("Gemini API call failed, using fallback engine: %s", str(e))
+
+        # Fallback heuristic engine
+        fallback_text = _generate_fallback_response(user_message, farm_context)
+        return Response({
+            "response": fallback_text,
+            "provider": "arvion-dairy-knowledge-base",
+            "mode": "offline_fallback",
+            "farm_context": farm_context,
+        })
+

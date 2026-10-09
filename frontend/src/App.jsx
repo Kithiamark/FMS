@@ -16,6 +16,7 @@ import Alerts from './pages/Alerts';
 import Settings from './pages/Settings';
 import WorkerTasks from "./pages/WorkerTasks";
 import Community from './pages/Community';
+import FindBuyer from './pages/FindBuyer';
 import VetDashboard from './pages/vet/VetDashboard';
 import VetFarms from './pages/vet/VetFarms';
 import VetFarmDetail from './pages/vet/VetFarmDetail';
@@ -144,6 +145,11 @@ const AppRoutes = () => {
             <Route path="/find-vet" element={
                 <ProtectedRoute allowedRoles={['FARMER']}>
                     <FindVet />
+                </ProtectedRoute>
+            } />
+            <Route path="/find-buyer" element={
+                <ProtectedRoute allowedRoles={['FARMER', 'FARM_WORKER']}>
+                    <FindBuyer />
                 </ProtectedRoute>
             } />
             <Route path="/messages" element={

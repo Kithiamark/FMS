@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
-  LayoutDashboard, Milk, PiggyBank, Brain, Bell, Settings, LogOut, Menu, X, ChevronLeft, Beef, MessageCircle, Stethoscope, Leaf, UsersRound, Calendar
+  LayoutDashboard, Milk, PiggyBank, Brain, Bell, Settings, LogOut, Menu, X, ChevronLeft, Beef, MessageCircle, Stethoscope, Leaf, UsersRound, Calendar, Building2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../ui/Button';
@@ -23,7 +23,8 @@ const Sidebar = ({ isOpen, toggle, isMobile }) => {
   const secondaryNavItems = [
     { icon: Beef, label: 'Herd', path: '/animals' },
     { icon: Stethoscope, label: 'Find Vet', path: '/find-vet' },
-    { icon: UsersRound, Calendar, label: 'Community', path: '/community' },
+    { icon: Building2, label: 'Find Buyers', path: '/find-buyer' },
+    { icon: UsersRound, label: 'Community', path: '/community' },
     { icon: Calendar, label: 'Tasks', path: '/tasks' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
     { icon: Bell, label: t('alerts'), path: '/alerts' },

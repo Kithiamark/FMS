@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../api/axios';
 
 export const useFarmHealth = () => {
@@ -34,3 +34,13 @@ export const useFeedRecommendation = (data) => {
         staleTime: 1000 * 60 * 60 * 24, // 24 hours
     });
 };
+
+export const useAIChat = () => {
+    return useMutation({
+        mutationFn: async ({ message, history }) => {
+            const response = await api.post('/ai/chat/', { message, history });
+            return response.data;
+        },
+    });
+};
+

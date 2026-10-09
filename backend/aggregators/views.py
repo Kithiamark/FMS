@@ -23,11 +23,19 @@ class AggregatorProfileViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = AggregatorProfile.objects.select_related('user')
         if getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'ADMIN':
+            county = self.request.query_params.get('county')
+            if county:
+                qs = qs.filter(operating_counties__icontains=county)
             return qs
         if self.action == 'list':
-            if user.role == 'FARMER':
-                return qs.filter(is_verified=True)
-            return qs.filter(user=user)
+            county = self.request.query_params.get('county')
+            if user.role in ['FARMER', 'FARM_WORKER']:
+                qs = qs.filter(is_verified=True)
+            else:
+                qs = qs.filter(user=user)
+            if county:
+                qs = qs.filter(operating_counties__icontains=county)
+            return qs
         # Detail actions (retrieve, update, partial_update, destroy)
         # Allow verified aggregators OR user's own profile
         return qs.filter(Q(is_verified=True) | Q(user=user))

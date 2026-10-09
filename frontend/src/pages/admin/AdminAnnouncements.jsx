@@ -241,75 +241,131 @@ const AdminAnnouncements = () => {
             </div>
 
             {/* MODAL: CREATE / EDIT ANNOUNCEMENT */}
-            <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title={editingAnnouncement ? "Edit Announcement" : "Create Platform Announcement"}>
+            <Modal 
+                isOpen={isCreateOpen} 
+                onClose={() => setIsCreateOpen(false)} 
+                title={editingAnnouncement ? "Edit Announcement / Newsletter Broadcast" : "Compose Platform Announcement & Newsletter"}
+                size="2xl"
+            >
                 <form onSubmit={handleSubmit} className="space-y-4 text-xs text-gray-300">
-                    <div>
-                        <label className="block text-[11px] font-bold text-gray-400 mb-1">Announcement Title</label>
-                        <input 
-                            type="text"
-                            required
-                            value={title}
-                            onChange={e => setTitle(e.target.value)}
-                            placeholder="e.g. Scheduled System Maintenance / Vaccine Alert"
-                            className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white font-medium focus:ring-1 focus:ring-admin-accent"
-                        />
-                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        {/* Left Column: Form Controls */}
+                        <div className="lg:col-span-7 space-y-4">
+                            <div>
+                                <label className="block text-[11px] font-bold text-gray-400 mb-1">Announcement / Bulletin Title</label>
+                                <input 
+                                    type="text"
+                                    required
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    placeholder="e.g. FMD Vaccination Alert / Milk Quality Standards Update"
+                                    className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-white font-medium focus:ring-1 focus:ring-admin-accent text-sm"
+                                />
+                            </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-[11px] font-bold text-gray-400 mb-1">Target Audience</label>
-                            <select 
-                                value={targetAudience}
-                                onChange={e => setTargetAudience(e.target.value)}
-                                className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white font-medium focus:ring-1 focus:ring-admin-accent"
-                            >
-                                <option value="ALL">All Users (Platform-Wide)</option>
-                                <option value="FARMERS">Farmers Only</option>
-                                <option value="VETS">Veterinarians Only</option>
-                                <option value="ENTERPRISE">Enterprise Users</option>
-                            </select>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-bold text-gray-400 mb-1">Target Audience</label>
+                                    <select 
+                                        value={targetAudience}
+                                        onChange={e => setTargetAudience(e.target.value)}
+                                        className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white font-medium focus:ring-1 focus:ring-admin-accent"
+                                    >
+                                        <option value="ALL">All Users (Platform-Wide)</option>
+                                        <option value="FARMERS">Farmers Only</option>
+                                        <option value="VETS">Veterinarians Only</option>
+                                        <option value="ENTERPRISE">Enterprise Users</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-gray-400 mb-1">Expiration Date (Optional)</label>
+                                    <input 
+                                        type="date"
+                                        value={expiresAt}
+                                        onChange={e => setExpiresAt(e.target.value)}
+                                        className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white font-medium focus:ring-1 focus:ring-admin-accent"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-[11px] font-bold text-gray-400">Broadcast Content & Message Body</label>
+                                    <span className="text-[10px] text-gray-500 font-mono">{body.length} characters</span>
+                                </div>
+                                <textarea 
+                                    rows="9"
+                                    required
+                                    value={body}
+                                    onChange={e => setBody(e.target.value)}
+                                    placeholder="Draft your full newsletter advisory or platform announcement here..."
+                                    className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-white text-xs leading-relaxed focus:ring-1 focus:ring-admin-accent font-sans"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1">
+                                <input 
+                                    type="checkbox"
+                                    id="is_published"
+                                    checked={isPublished}
+                                    onChange={e => setIsPublished(e.target.checked)}
+                                    className="h-4 w-4 rounded text-admin-accent focus:ring-admin-accent bg-gray-900 border-gray-800"
+                                />
+                                <label htmlFor="is_published" className="font-semibold text-gray-300 cursor-pointer">
+                                    Publish immediately to live in-app notifications & feeds
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-[11px] font-bold text-gray-400 mb-1">Expiration Date (Optional)</label>
-                            <input 
-                                type="date"
-                                value={expiresAt}
-                                onChange={e => setExpiresAt(e.target.value)}
-                                className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white font-medium focus:ring-1 focus:ring-admin-accent"
-                            />
+
+                        {/* Right Column: Live Feed Preview */}
+                        <div className="lg:col-span-5 bg-gray-950/60 border border-gray-800 rounded-2xl p-4 flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center justify-between pb-3 border-b border-gray-800/80 mb-3">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-admin-accent flex items-center gap-1.5">
+                                        <Megaphone size={13} /> Live Feed Preview
+                                    </span>
+                                    <span className="text-[10px] bg-gray-800 text-gray-300 px-2 py-0.5 rounded font-mono">
+                                        {targetAudience}
+                                    </span>
+                                </div>
+
+                                <div className="bg-admin-card border border-gray-800/80 rounded-xl p-4 space-y-2.5 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-md bg-admin-accent/20 text-admin-accent flex items-center justify-center font-bold text-xs">
+                                            A
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-400 font-medium">Arvion Official Broadcast</p>
+                                            <p className="text-[9px] text-gray-500">Just now • Platform Notice</p>
+                                        </div>
+                                    </div>
+                                    <h4 className="text-sm font-bold text-white leading-snug">
+                                        {title || 'Announcement Title Preview'}
+                                    </h4>
+                                    <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed line-clamp-6">
+                                        {body || 'Your broadcast message preview will appear here in real-time as you type...'}
+                                    </p>
+                                    {expiresAt && (
+                                        <p className="text-[10px] text-amber-400/80 flex items-center gap-1 pt-1 border-t border-gray-800/60">
+                                            <Clock size={11} /> Valid until {expiresAt}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="p-3 bg-blue-950/20 border border-blue-900/30 rounded-xl mt-4">
+                                <p className="text-[11px] text-blue-300/90 leading-relaxed">
+                                    💡 <strong>Broadcasting Tip:</strong> Farmers receive this announcement directly at the top of their workspace and in community alert tickers.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-[11px] font-bold text-gray-400 mb-1">Broadcast Message Body</label>
-                        <textarea 
-                            rows="5"
-                            required
-                            value={body}
-                            onChange={e => setBody(e.target.value)}
-                            placeholder="Type the full announcement content..."
-                            className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white text-xs leading-relaxed focus:ring-1 focus:ring-admin-accent font-sans"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1">
-                        <input 
-                            type="checkbox"
-                            id="is_published"
-                            checked={isPublished}
-                            onChange={e => setIsPublished(e.target.checked)}
-                            className="h-4 w-4 rounded text-admin-accent focus:ring-admin-accent bg-gray-900 border-gray-800"
-                        />
-                        <label htmlFor="is_published" className="font-semibold text-gray-300 cursor-pointer">
-                            Publish immediately (Visible in in-app user notifications)
-                        </label>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-3 border-t border-gray-800">
+                    <div className="flex justify-end gap-2.5 pt-4 border-t border-gray-800">
                         <Button variant="outline" size="sm" type="button" onClick={() => setIsCreateOpen(false)}>
                             Cancel
                         </Button>
-                        <Button size="sm" type="submit" disabled={saveMutation.isPending} className="bg-admin-accent text-white">
+                        <Button size="sm" type="submit" disabled={saveMutation.isPending} className="bg-admin-accent text-white px-5">
                             {saveMutation.isPending ? 'Saving...' : (editingAnnouncement ? 'Save Changes' : 'Broadcast Now')}
                         </Button>
                     </div>

@@ -202,6 +202,9 @@ CELERY_TIMEZONE = TIME_ZONE
 AFRICASTALKING_USERNAME = config('AFRICASTALKING_USERNAME', default='sandbox')
 AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY', default='')
 
+# Google Gemini API (AI Farm Assistant)
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+
 # Production Logging Configuration
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
