@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
@@ -11,7 +11,10 @@ from datetime import timedelta
 from core.models import AuditLog
 from core.utils import get_user_farm
 from .models import SupportTicket, TicketMessage, Announcement, SystemLog
-from .serializers import SupportTicketSerializer, TicketMessageSerializer, SystemLogSerializer, VetProfileAdminSerializer
+from .serializers import (
+    SupportTicketSerializer, TicketMessageSerializer, SystemLogSerializer, 
+    VetProfileAdminSerializer, AdminSubscriptionSerializer, AnnouncementSerializer
+)
 from farms.models import Farm
 from animals.models import Animal
 from vets.models import VetProfile
@@ -62,8 +65,67 @@ class AdminStatsView(APIView):
 
 class AdminUserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
-    queryset = User.objects.all()
     serializer_class = UserSerializer
+
+    def get_queryset(self):
+        qs = User.objects.all().order_by('-id')
+        role = self.request.query_params.get('role')
+        status_param = self.request.query_params.get('status')
+        search = self.request.query_params.get('search')
+        if role:
+            qs = qs.filter(role=role)
+        if status_param == 'active':
+            qs = qs.filter(is_active=True)
+        elif status_param == 'suspended':
+            qs = qs.filter(is_active=False)
+        if search:
+            search_clean = search.strip()
+            # Handle phone search with/without +, 254, or 07
+            phone_variant = search_clean
+            if not phone_variant.startswith('+') and (phone_variant.startswith('254') or phone_variant.startswith('0') or phone_variant.startswith('7') or phone_variant.startswith('1')):
+                if phone_variant.startswith('0'):
+                    phone_variant = '+254' + phone_variant[1:]
+                elif phone_variant.startswith('254'):
+                    phone_variant = '+' + phone_variant
+                elif phone_variant.startswith('7') or phone_variant.startswith('1'):
+                    phone_variant = '+254' + phone_variant
+
+            qs = qs.filter(
+                Q(full_name__icontains=search_clean) |
+                Q(phone_number__icontains=search_clean) |
+                Q(phone_number__icontains=phone_variant) |
+                Q(email__icontains=search_clean)
+            )
+        return qs
+
+    @action(detail=True, methods=['patch'], url_path='toggle-active')
+    def toggle_active(self, request, pk=None):
+        target_user = self.get_object()
+        if target_user == request.user:
+            return Response({'error': 'You cannot deactivate your own account.'}, status=status.HTTP_400_BAD_REQUEST)
+        if target_user.is_superuser and not request.user.is_superuser:
+            return Response({'error': 'Only superusers can modify other superusers.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        target_user.is_active = not target_user.is_active
+        target_user.save()
+        
+        AuditLog.objects.create(
+            user=request.user,
+            event_type=AuditLog.EventType.SECURITY,
+            action='USER_STATUS_TOGGLED',
+            model_name='User',
+            object_id=str(target_user.id),
+            metadata={
+                'target_email': target_user.email,
+                'is_active': target_user.is_active,
+                'toggled_by': request.user.email
+            }
+        )
+        return Response({
+            'status': 'success',
+            'is_active': target_user.is_active,
+            'message': f"Account for {target_user.full_name} is now {'active' if target_user.is_active else 'suspended'}."
+        })
 
     @action(detail=True, methods=['post'])
     def impersonate(self, request, pk=None):
@@ -217,9 +279,12 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         farm = get_user_farm(self.request.user)
         serializer.save(raised_by=self.request.user, farm=farm)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['get', 'post'])
     def messages(self, request, pk=None):
         ticket = self.get_object()
+        if request.method == 'GET':
+            msgs = ticket.messages.all().order_by('created_at')
+            return Response(TicketMessageSerializer(msgs, many=True).data)
         content = request.data.get('content', '')
         if not content or not str(content).strip():
             return Response(
@@ -228,6 +293,72 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             )
         msg = TicketMessage.objects.create(ticket=ticket, sender=request.user, content=str(content).strip())
         return Response({'status': 'message sent', 'id': msg.id})
+
+class AdminSubscriptionViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    serializer_class = AdminSubscriptionSerializer
+
+    def get_queryset(self):
+        qs = Subscription.objects.all().select_related('farm', 'farm__owner').order_by('-created_at')
+        plan = self.request.query_params.get('plan')
+        sub_status = self.request.query_params.get('status')
+        search = self.request.query_params.get('search')
+        if plan:
+            qs = qs.filter(plan=plan)
+        if sub_status:
+            qs = qs.filter(status=sub_status)
+        if search:
+            qs = qs.filter(
+                Q(farm__name__icontains=search) |
+                Q(farm__owner__full_name__icontains=search) |
+                Q(farm__owner__phone_number__icontains=search)
+            )
+        return qs
+
+    @action(detail=True, methods=['patch'], url_path='override')
+    def override(self, request, pk=None):
+        sub = self.get_object()
+        new_plan = request.data.get('plan')
+        new_status = request.data.get('status')
+        extend_days = request.data.get('extend_days')
+
+        if new_plan and new_plan in Subscription.Plan.values:
+            sub.plan = new_plan
+        if new_status and new_status in Subscription.Status.values:
+            sub.status = new_status
+        if extend_days:
+            try:
+                days = int(extend_days)
+                base_date = sub.end_date if (sub.end_date and sub.end_date >= timezone.now().date()) else timezone.now().date()
+                sub.end_date = base_date + timedelta(days=days)
+                sub.status = Subscription.Status.ACTIVE
+            except (ValueError, TypeError):
+                return Response({'error': 'extend_days must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        sub.save()
+        AuditLog.objects.create(
+            user=request.user,
+            event_type=AuditLog.EventType.SUBSCRIPTION,
+            action='SUBSCRIPTION_OVERRIDDEN',
+            model_name='Subscription',
+            object_id=str(sub.id),
+            metadata={
+                'farm': sub.farm.name,
+                'plan': sub.plan,
+                'status': sub.status,
+                'end_date': str(sub.end_date) if sub.end_date else None,
+                'modified_by': request.user.email
+            }
+        )
+        return Response(AdminSubscriptionSerializer(sub).data)
+
+class AnnouncementViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    serializer_class = AnnouncementSerializer
+    queryset = Announcement.objects.all().order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 class SystemLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminUser]

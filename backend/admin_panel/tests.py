@@ -3,9 +3,10 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from core.models import AuditLog
-from admin_panel.models import SupportTicket, TicketMessage, SystemLog
+from admin_panel.models import SupportTicket, TicketMessage, SystemLog, Announcement
 from vets.models import VetProfile
 from farms.models import Farm
+from finance.models import Subscription
 
 User = get_user_model()
 
@@ -221,5 +222,92 @@ class TestAdminPanelSecurity:
         res = api_client.post(f'/api/v1/admin/tickets/{ticket.id}/messages/', {'content': 'Here are my new details.'})
         assert res.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED]
         assert TicketMessage.objects.filter(ticket=ticket, sender=farmer).exists()
+
+        # 4. Superadmin can retrieve message thread via GET
+        api_client.force_authenticate(user=farmer)
+        res = api_client.get(f'/api/v1/admin/tickets/{ticket.id}/messages/')
+        assert res.status_code == status.HTTP_200_OK
+        assert len(res.data) >= 1
+        assert res.data[0]['content'] == 'Here are my new details.'
+
+    def test_admin_user_filtering_and_toggle_active(self, api_client, superuser, farmer):
+        api_client.force_authenticate(user=superuser)
+
+        # 1. Filter by role
+        res = api_client.get('/api/v1/admin/users/?role=FARMER')
+        assert res.status_code == status.HTTP_200_OK
+        results = res.data.get('results') if isinstance(res.data, dict) else res.data
+        assert any(u['id'] == farmer.id for u in results)
+
+        # 2. Search by phone
+        res = api_client.get(f'/api/v1/admin/users/?search={farmer.phone_number}')
+        assert res.status_code == status.HTTP_200_OK
+        results = res.data.get('results') if isinstance(res.data, dict) else res.data
+        assert any(u['id'] == farmer.id for u in results)
+
+        # 3. Toggle active
+        assert farmer.is_active is True
+        res = api_client.patch(f'/api/v1/admin/users/{farmer.id}/toggle-active/')
+        assert res.status_code == status.HTTP_200_OK
+        farmer.refresh_from_db()
+        assert farmer.is_active is False
+
+        # Reactivate
+        res = api_client.patch(f'/api/v1/admin/users/{farmer.id}/toggle-active/')
+        assert res.status_code == status.HTTP_200_OK
+        farmer.refresh_from_db()
+        assert farmer.is_active is True
+
+    def test_admin_subscriptions_list_and_override(self, api_client, superuser, farmer):
+        api_client.force_authenticate(user=superuser)
+        sub = Subscription.objects.create(
+            farm=farmer.farm,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.ACTIVE
+        )
+
+        # 1. List subscriptions
+        res = api_client.get('/api/v1/admin/subscriptions/')
+        assert res.status_code == status.HTTP_200_OK
+        results = res.data.get('results') if isinstance(res.data, dict) else res.data
+        assert any(s['id'] == sub.id for s in results)
+
+        # 2. Override plan and extend duration
+        res = api_client.patch(f'/api/v1/admin/subscriptions/{sub.id}/override/', {
+            'plan': 'Premium',
+            'status': 'Active',
+            'extend_days': 30
+        })
+        assert res.status_code == status.HTTP_200_OK
+        sub.refresh_from_db()
+        assert sub.plan == 'Premium'
+        assert sub.end_date is not None
+
+    def test_admin_announcements_crud(self, api_client, superuser):
+        api_client.force_authenticate(user=superuser)
+
+        # 1. Create announcement
+        res = api_client.post('/api/v1/admin/announcements/', {
+            'title': 'Emergency FMD Advisory',
+            'body': 'Foot and Mouth disease vaccinations are required across Nakuru county.',
+            'target_audience': 'FARMERS',
+            'is_published': True
+        })
+        assert res.status_code == status.HTTP_201_CREATED
+        announcement_id = res.data['id']
+        assert res.data['title'] == 'Emergency FMD Advisory'
+        assert res.data['created_by_name'] == superuser.full_name
+
+        # 2. List announcements
+        res = api_client.get('/api/v1/admin/announcements/')
+        assert res.status_code == status.HTTP_200_OK
+        results = res.data.get('results') if isinstance(res.data, dict) else res.data
+        assert any(a['id'] == announcement_id for a in results)
+
+        # 3. Delete announcement
+        res = api_client.delete(f'/api/v1/admin/announcements/{announcement_id}/')
+        assert res.status_code == status.HTTP_204_NO_CONTENT
+        assert not Announcement.objects.filter(id=announcement_id).exists()
+
 
 

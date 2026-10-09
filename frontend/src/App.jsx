@@ -28,8 +28,13 @@ import VetProfile from './pages/vet/VetProfile';
 import AggregatorDashboard from './pages/aggregator/AggregatorDashboard';
 // Admin Imports
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminFarmers from './pages/admin/AdminFarmers';
 import AdminVets from './pages/admin/AdminVets';
+import AdminSubscriptions from './pages/admin/AdminSubscriptions';
+import AdminTickets from './pages/admin/AdminTickets';
+import AdminAnnouncements from './pages/admin/AdminAnnouncements';
 import AdminLogs from './pages/admin/AdminLogs';
+import AdminSettings from './pages/admin/AdminSettings';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
@@ -183,14 +188,39 @@ const AppRoutes = () => {
                     <AdminDashboard />
                 </ProtectedRoute>
             } />
+            <Route path="/admin/farmers" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminFarmers />
+                </ProtectedRoute>
+            } />
             <Route path="/admin/vets" element={
                 <ProtectedRoute allowedRoles={['ADMIN']}>
                     <AdminVets />
                 </ProtectedRoute>
             } />
+            <Route path="/admin/subscriptions" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminSubscriptions />
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/tickets" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminTickets />
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/announcements" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminAnnouncements />
+                </ProtectedRoute>
+            } />
             <Route path="/admin/logs" element={
                 <ProtectedRoute allowedRoles={['ADMIN']}>
                     <AdminLogs />
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminSettings />
                 </ProtectedRoute>
             } />
             <Route path="/admin/*" element={

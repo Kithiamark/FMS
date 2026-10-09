@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     AdminStatsView, AdminUserViewSet, AdminVetViewSet, 
-    SupportTicketViewSet, SystemLogViewSet, RecentOTPsView
+    SupportTicketViewSet, SystemLogViewSet, RecentOTPsView,
+    AdminSubscriptionViewSet, AnnouncementViewSet
 )
 
 router = DefaultRouter()
@@ -10,6 +11,8 @@ router.register(r'users', AdminUserViewSet, basename='admin-users')
 router.register(r'vets', AdminVetViewSet, basename='admin-vets')
 router.register(r'tickets', SupportTicketViewSet, basename='admin-tickets')
 router.register(r'logs', SystemLogViewSet, basename='admin-logs')
+router.register(r'subscriptions', AdminSubscriptionViewSet, basename='admin-subscriptions')
+router.register(r'announcements', AnnouncementViewSet, basename='admin-announcements')
 
 urlpatterns = [
     path('stats/', AdminStatsView.as_view(), name='admin-stats'),
