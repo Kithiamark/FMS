@@ -174,6 +174,16 @@ class VerifyOTPView(views.APIView):
 
             user.save(update_fields=update_fields)
 
+            if user.indemnity_agreed:
+                if hasattr(user, 'vet_profile') and user.vet_profile:
+                    user.vet_profile.indemnity_agreed = True
+                    user.vet_profile.indemnity_agreed_at = user.indemnity_agreed_at
+                    user.vet_profile.save(update_fields=['indemnity_agreed', 'indemnity_agreed_at'])
+                elif hasattr(user, 'aggregator_profile') and user.aggregator_profile:
+                    user.aggregator_profile.indemnity_agreed = True
+                    user.aggregator_profile.indemnity_agreed_at = user.indemnity_agreed_at
+                    user.aggregator_profile.save(update_fields=['indemnity_agreed', 'indemnity_agreed_at'])
+
             AuditLog.objects.create(
                 user=user,
                 farm=get_user_farm(user),

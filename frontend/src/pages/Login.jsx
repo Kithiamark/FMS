@@ -26,8 +26,16 @@ const Login = () => {
     const onSubmit = async (data) => {
         setServerError('');
         try {
-            await login(normalizeKenyanPhone(data.phone_number), data.password);
-            navigate('/dashboard');
+            const loggedInUser = await login(normalizeKenyanPhone(data.phone_number), data.password);
+            if (loggedInUser?.role === 'ADMIN') {
+                navigate('/admin/dashboard');
+            } else if (loggedInUser?.role === 'VETERINARIAN') {
+                navigate('/vet/dashboard');
+            } else if (loggedInUser?.role === 'AGGREGATOR') {
+                navigate('/aggregator/dashboard');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (error) {
             setServerError(error.response?.data?.detail || 'Login failed. Check your phone number and password.');
         }

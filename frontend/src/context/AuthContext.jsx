@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
         setAuthToken(data.access);
         // Fetch the full user object after login because route guards and layouts need
         // role and farm data, not just a token pair.
-        await refreshUser();
+        return await refreshUser();
     };
 
     const register = async (data) => {

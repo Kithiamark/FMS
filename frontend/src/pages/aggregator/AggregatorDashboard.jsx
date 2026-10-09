@@ -296,6 +296,15 @@ const AggregatorDashboard = () => {
                                     <Truck size={14} className="text-cyan-300" />
                                     Procurement & Route Fleet
                                 </span>
+                                {profile?.is_verified ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-0.5 text-xs font-bold text-emerald-300">
+                                        <CheckCircle size={13} /> Verified Off-Taker
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-400/30 px-2.5 py-0.5 text-xs font-bold text-amber-300">
+                                        Verification Pending
+                                    </span>
+                                )}
                                 {profile?.indemnity_agreed ? (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-0.5 text-xs font-bold text-emerald-300">
                                         <CheckCircle size={13} /> KYC Verified

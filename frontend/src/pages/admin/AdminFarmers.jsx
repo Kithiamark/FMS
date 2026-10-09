@@ -8,8 +8,15 @@ import { useToast } from '../../components/ui/Toast';
 import { 
     Users, Search, ShieldAlert, KeyRound, CheckCircle, 
     XCircle, Eye, Phone, Mail, MapPin, Building2, UserCheck, 
-    RefreshCw, Filter
+    RefreshCw, Filter, UserPlus, Stethoscope, Truck
 } from 'lucide-react';
+
+const KENYAN_COUNTIES = [
+    'Kiambu', 'Murang\'a', 'Nyeri', 'Nyandarua', 'Nakuru', 'Meru', 
+    'Embu', 'Kirinyaga', 'Uasin Gishu', 'Machakos', 'Kajiado', 'Laikipia', 
+    'Bomet', 'Kericho', 'Nandi', 'Bungoma', 'Kakamega', 'Kisii', 
+    'Kisumu', 'Narok', 'Trans Nzoia', 'Nairobi'
+];
 
 const fetchUsers = async () => {
     const { data } = await api.get('/admin/users/');
@@ -33,6 +40,44 @@ const AdminFarmers = () => {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [impersonateTarget, setImpersonateTarget] = useState(null);
     const [impersonateToken, setImpersonateToken] = useState(null);
+    const [isOnboardOpen, setIsOnboardOpen] = useState(false);
+    const [onboardForm, setOnboardForm] = useState({
+        role: 'FARMER',
+        full_name: '',
+        phone_number: '',
+        license_number: '',
+        county: 'Kiambu',
+        specialization: 'Dairy',
+        organization_name: '',
+        operating_county: 'Kiambu',
+    });
+
+    const onboardMutation = useMutation({
+        mutationFn: async (payload) => {
+            const { data } = await api.post('/auth/register/', payload);
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(['adminUsers']);
+            setIsOnboardOpen(false);
+            setOnboardForm({
+                role: 'FARMER',
+                full_name: '',
+                phone_number: '',
+                license_number: '',
+                county: 'Kiambu',
+                specialization: 'Dairy',
+                organization_name: '',
+                operating_county: 'Kiambu',
+            });
+            addToast('Partner account provisioned successfully!', 'success');
+        },
+        onError: (err) => {
+            const d = err.response?.data;
+            const msg = d ? (typeof d === 'object' ? Object.values(d).flat().join(' ') : String(d)) : 'Failed to provision partner account.';
+            addToast(msg, 'error');
+        }
+    });
 
     // Toggle active mutation
     const toggleActiveMutation = useMutation({
@@ -94,6 +139,7 @@ const AdminFarmers = () => {
     // Metric counts
     const totalFarmers = users.filter(u => u.role === 'FARMER').length;
     const totalAggregators = users.filter(u => u.role === 'AGGREGATOR').length;
+    const totalVets = users.filter(u => u.role === 'VETERINARIAN').length;
     const totalWorkers = users.filter(u => u.role === 'FARM_WORKER').length;
     const totalSuspended = users.filter(u => !u.is_active).length;
 
@@ -123,40 +169,54 @@ const AdminFarmers = () => {
                             Platform User Directory
                         </h1>
                         <p className="text-xs text-gray-400 mt-1">
-                            Governance and administration across registered dairy farmers, aggregators, and workforce.
+                            Governance and administration across registered dairy farmers, veterinarians, aggregators, and workforce.
                         </p>
                     </div>
-                    <button 
-                        onClick={() => refetch()}
-                        disabled={isFetching}
-                        className="flex items-center gap-2 text-xs px-3.5 py-2 rounded-xl bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 transition"
-                    >
-                        <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
-                        Refresh Directory
-                    </button>
+                    <div className="flex items-center gap-2.5">
+                        <button 
+                            onClick={() => setIsOnboardOpen(true)}
+                            className="flex items-center gap-2 text-xs px-3.5 py-2 rounded-xl bg-admin-accent text-white hover:bg-emerald-600 transition font-semibold shadow-xs"
+                        >
+                            <UserPlus size={14} />
+                            Onboard Partner
+                        </button>
+                        <button 
+                            onClick={() => refetch()}
+                            disabled={isFetching}
+                            className="flex items-center gap-2 text-xs px-3.5 py-2 rounded-xl bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 transition"
+                        >
+                            <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
+                            Refresh
+                        </button>
+                    </div>
                 </div>
 
                 {/* Metrics */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-admin-card border border-gray-800 rounded-xl p-5">
-                        <p className="text-xs text-gray-500 uppercase font-medium">Contracted Farmers</p>
-                        <h3 className="text-2xl font-bold text-white mt-1">{totalFarmers}</h3>
-                        <p className="text-[11px] text-blue-400 mt-1">Independent herd owners</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+                    <div className="bg-admin-card border border-gray-800 rounded-xl p-4">
+                        <p className="text-xs text-gray-500 uppercase font-medium">Farmers</p>
+                        <h3 className="text-xl font-bold text-white mt-1">{totalFarmers}</h3>
+                        <p className="text-[11px] text-blue-400 mt-1">Dairy herd owners</p>
                     </div>
-                    <div className="bg-admin-card border border-gray-800 rounded-xl p-5">
-                        <p className="text-xs text-gray-500 uppercase font-medium">Aggregators / Buyers</p>
-                        <h3 className="text-2xl font-bold text-white mt-1">{totalAggregators}</h3>
-                        <p className="text-[11px] text-purple-400 mt-1">Cold-chain procurement hubs</p>
+                    <div className="bg-admin-card border border-gray-800 rounded-xl p-4">
+                        <p className="text-xs text-gray-500 uppercase font-medium">Veterinarians</p>
+                        <h3 className="text-xl font-bold text-white mt-1">{totalVets}</h3>
+                        <p className="text-[11px] text-teal-400 mt-1">Licensed clinicians</p>
                     </div>
-                    <div className="bg-admin-card border border-gray-800 rounded-xl p-5">
+                    <div className="bg-admin-card border border-gray-800 rounded-xl p-4">
+                        <p className="text-xs text-gray-500 uppercase font-medium">Aggregators</p>
+                        <h3 className="text-xl font-bold text-white mt-1">{totalAggregators}</h3>
+                        <p className="text-[11px] text-purple-400 mt-1">Milk off-takers</p>
+                    </div>
+                    <div className="bg-admin-card border border-gray-800 rounded-xl p-4">
                         <p className="text-xs text-gray-500 uppercase font-medium">Farm Workers</p>
-                        <h3 className="text-2xl font-bold text-white mt-1">{totalWorkers}</h3>
-                        <p className="text-[11px] text-amber-400 mt-1">Delegated farm staff</p>
+                        <h3 className="text-xl font-bold text-white mt-1">{totalWorkers}</h3>
+                        <p className="text-[11px] text-amber-400 mt-1">Delegated staff</p>
                     </div>
-                    <div className="bg-admin-card border border-gray-800 rounded-xl p-5">
-                        <p className="text-xs text-gray-500 uppercase font-medium">Suspended Accounts</p>
-                        <h3 className="text-2xl font-bold text-rose-500 mt-1">{totalSuspended}</h3>
-                        <p className="text-[11px] text-gray-400 mt-1">Access restricted by security</p>
+                    <div className="bg-admin-card border border-gray-800 rounded-xl p-4">
+                        <p className="text-xs text-gray-500 uppercase font-medium">Suspended</p>
+                        <h3 className="text-xl font-bold text-rose-500 mt-1">{totalSuspended}</h3>
+                        <p className="text-[11px] text-gray-400 mt-1">Security restricted</p>
                     </div>
                 </div>
 
@@ -168,6 +228,7 @@ const AdminFarmers = () => {
                             {[
                                 { id: 'ALL', label: 'All Users' },
                                 { id: 'FARMER', label: 'Farmers' },
+                                { id: 'VETERINARIAN', label: 'Veterinarians' },
                                 { id: 'AGGREGATOR', label: 'Aggregators' },
                                 { id: 'FARM_WORKER', label: 'Workers' }
                             ].map(tab => (
@@ -430,6 +491,174 @@ const AdminFarmers = () => {
                         )}
                     </div>
                 )}
+            </Modal>
+
+            {/* MODAL: ONBOARD PARTNER (FARMER, VET, AGGREGATOR) */}
+            <Modal isOpen={isOnboardOpen} onClose={() => setIsOnboardOpen(false)} title="Onboard Platform Partner">
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const payload = {
+                            role: onboardForm.role,
+                            full_name: onboardForm.full_name,
+                            phone_number: onboardForm.phone_number,
+                        };
+                        if (onboardForm.role === 'VETERINARIAN') {
+                            payload.license_number = onboardForm.license_number;
+                            payload.county = onboardForm.county;
+                            payload.specialization = onboardForm.specialization;
+                        } else if (onboardForm.role === 'AGGREGATOR') {
+                            payload.organization_name = onboardForm.organization_name;
+                            payload.operating_counties = [onboardForm.operating_county];
+                            payload.operating_county = onboardForm.operating_county;
+                        }
+                        onboardMutation.mutate(payload);
+                    }}
+                    className="space-y-4 text-xs text-gray-300"
+                >
+                    <div className="grid grid-cols-3 gap-2 bg-gray-900 p-1.5 rounded-xl border border-gray-800">
+                        {[
+                            { id: 'FARMER', label: 'Farmer' },
+                            { id: 'VETERINARIAN', label: 'Veterinarian' },
+                            { id: 'AGGREGATOR', label: 'Milk Buyer' },
+                        ].map((r) => (
+                            <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => setOnboardForm(prev => ({ ...prev, role: r.id }))}
+                                className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition ${
+                                    onboardForm.role === r.id ? 'bg-admin-accent text-white shadow-xs' : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {r.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                            {onboardForm.role === 'AGGREGATOR' ? 'Contact Person Name *' : 'Full Name *'}
+                        </label>
+                        <input
+                            type="text"
+                            required
+                            value={onboardForm.full_name}
+                            onChange={(e) => setOnboardForm(prev => ({ ...prev, full_name: e.target.value }))}
+                            placeholder="e.g. Grace Wanjiku"
+                            className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-admin-accent text-xs"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                            Phone Number (+254...) *
+                        </label>
+                        <input
+                            type="tel"
+                            required
+                            value={onboardForm.phone_number}
+                            onChange={(e) => setOnboardForm(prev => ({ ...prev, phone_number: e.target.value }))}
+                            placeholder="0712345678 or +254712345678"
+                            className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-admin-accent text-xs"
+                        />
+                    </div>
+
+                    {onboardForm.role === 'VETERINARIAN' && (
+                        <div className="space-y-3 pt-2 border-t border-gray-800">
+                            <div>
+                                <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                                    KVB License Number *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={onboardForm.license_number}
+                                    onChange={(e) => setOnboardForm(prev => ({ ...prev, license_number: e.target.value }))}
+                                    placeholder="e.g. KVB/2026/092"
+                                    className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-admin-accent text-xs"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                                        County *
+                                    </label>
+                                    <select
+                                        value={onboardForm.county}
+                                        onChange={(e) => setOnboardForm(prev => ({ ...prev, county: e.target.value }))}
+                                        className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-admin-accent text-xs"
+                                    >
+                                        {KENYAN_COUNTIES.map(c => (
+                                            <option key={c} value={c}>{c}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                                        Specialization
+                                    </label>
+                                    <select
+                                        value={onboardForm.specialization}
+                                        onChange={(e) => setOnboardForm(prev => ({ ...prev, specialization: e.target.value }))}
+                                        className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-admin-accent text-xs"
+                                    >
+                                        <option value="Dairy">Dairy</option>
+                                        <option value="General">General</option>
+                                        <option value="Surgery">Surgery</option>
+                                        <option value="Nutrition">Nutrition</option>
+                                        <option value="All">All</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {onboardForm.role === 'AGGREGATOR' && (
+                        <div className="space-y-3 pt-2 border-t border-gray-800">
+                            <div>
+                                <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                                    Organization / Cooperative Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={onboardForm.organization_name}
+                                    onChange={(e) => setOnboardForm(prev => ({ ...prev, organization_name: e.target.value }))}
+                                    placeholder="e.g. Limuru Dairy Farmers Co-op"
+                                    className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-admin-accent text-xs"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                                    Primary Operating County *
+                                </label>
+                                <select
+                                    value={onboardForm.operating_county}
+                                    onChange={(e) => setOnboardForm(prev => ({ ...prev, operating_county: e.target.value }))}
+                                    className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-admin-accent text-xs"
+                                >
+                                    {KENYAN_COUNTIES.map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-3 border-t border-gray-800">
+                        <Button variant="outline" size="sm" type="button" onClick={() => setIsOnboardOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            type="submit"
+                            className="bg-admin-accent hover:bg-emerald-600 text-white"
+                            disabled={onboardMutation.isPending}
+                        >
+                            {onboardMutation.isPending ? 'Provisioning...' : 'Provision Account'}
+                        </Button>
+                    </div>
+                </form>
             </Modal>
         </AdminLayout>
     );

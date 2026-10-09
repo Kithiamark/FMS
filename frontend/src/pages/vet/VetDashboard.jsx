@@ -1,11 +1,12 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import { VetLayout } from '../../components/Layout/VetLayout';
 import { DataCard } from '../../components/ui/DataCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Building, AlertTriangle, Calendar, MessageSquare, Clock, Users } from 'lucide-react';
+import { Building, AlertTriangle, Calendar, MessageSquare, Clock, Users, ShieldAlert, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const fetchVetDashboard = async () => {
@@ -14,13 +15,38 @@ const fetchVetDashboard = async () => {
 };
 
 const VetDashboard = () => {
+    const { user } = useAuth();
     const { data, isLoading } = useQuery({ queryKey: ['vetDashboard'], queryFn: fetchVetDashboard });
+    const isVerified = user?.is_verified ?? user?.vet_profile?.is_verified ?? true;
 
     if (isLoading) return <VetLayout><div className="p-8">Loading dashboard...</div></VetLayout>;
 
     return (
         <VetLayout>
             <div className="space-y-6">
+                {!isVerified && (
+                    <div className="rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-xl bg-amber-500/20 p-2 text-amber-700 mt-0.5 shrink-0">
+                                <ShieldAlert size={22} />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-amber-900 text-sm">License Verification Pending</h4>
+                                <p className="text-xs text-amber-800/90 mt-0.5 max-w-2xl">
+                                    Your KVB registration and practice credentials are being verified by platform administrators. You can configure your consultation rates and clinic profile in the meantime. You will appear in the public farmer directory once approved.
+                                </p>
+                            </div>
+                        </div>
+                        <Link 
+                            to="/vet/profile"
+                            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 px-3.5 py-2 text-xs font-bold text-white transition shadow-sm"
+                        >
+                            <span>Review Profile</span>
+                            <ArrowRight size={14} />
+                        </Link>
+                    </div>
+                )}
+
                 <div className="flex justify-between items-end">
                     <div>
                         <h1 className="text-2xl font-heading font-bold text-vet-navy">Good morning, Doctor</h1>
