@@ -15,7 +15,18 @@ const useChatWebSocket = (conversationId, onMessageReceived) => {
         if (!conversationId || !token) return;
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.port === '5173' ? 'localhost:8001' : window.location.host;
+        let host = window.location.port === '5173' ? 'localhost:8001' : window.location.host;
+        const apiBase = import.meta.env.VITE_API_BASE_URL;
+        if (import.meta.env.VITE_WS_BASE_URL) {
+            host = import.meta.env.VITE_WS_BASE_URL.replace(/^wss?:\/\//, '');
+        } else if (apiBase && apiBase.startsWith('http')) {
+            try {
+                const parsed = new URL(apiBase);
+                host = parsed.host;
+            } catch (e) {
+                void e;
+            }
+        }
         const wsUrl = `${protocol}//${host}/ws/chat/${conversationId}/?token=${token}`;
 
         try {
