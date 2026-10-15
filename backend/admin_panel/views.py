@@ -318,28 +318,82 @@ class AdminSubscriptionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'], url_path='override')
     def override(self, request, pk=None):
         sub = self.get_object()
+        action_name = request.data.get('action')
         new_plan = request.data.get('plan')
         new_status = request.data.get('status')
-        extend_days = request.data.get('extend_days')
+        extend_days = request.data.get('extend_days') or request.data.get('days')
+        mpesa_ref = request.data.get('mpesa_ref')
+        amount_kes = request.data.get('amount_kes')
 
-        if new_plan and new_plan in Subscription.Plan.values:
-            sub.plan = new_plan
-        if new_status and new_status in Subscription.Status.values:
-            sub.status = new_status
-        if extend_days:
+        from finance.serializers import PLAN_CATALOG
+
+        if action_name == 'activate':
+            sub.status = Subscription.Status.ACTIVE
+            days = int(extend_days or 30)
+            today = timezone.now().date()
+            sub.start_date = today
+            sub.end_date = today + timedelta(days=days)
+            if new_plan and new_plan in Subscription.Plan.values:
+                sub.plan = new_plan
+                sub.features_snapshot = PLAN_CATALOG.get(new_plan, {})
+            if mpesa_ref:
+                sub.mpesa_ref = str(mpesa_ref).strip().upper()
+            if amount_kes:
+                sub.amount_kes = int(amount_kes)
+            elif sub.plan in PLAN_CATALOG:
+                sub.amount_kes = PLAN_CATALOG[sub.plan]['price_kes']
+            sub.last_payment_mode = 'manual_mpesa'
+
+        elif action_name == 'freeze':
+            sub.status = Subscription.Status.FROZEN
+
+        elif action_name == 'unfreeze':
+            today = timezone.now().date()
+            if sub.end_date and sub.end_date >= today:
+                sub.status = Subscription.Status.ACTIVE
+            else:
+                sub.status = Subscription.Status.EXPIRED
+
+        elif action_name == 'extend':
             try:
-                days = int(extend_days)
+                days = int(extend_days or 30)
                 base_date = sub.end_date if (sub.end_date and sub.end_date >= timezone.now().date()) else timezone.now().date()
                 sub.end_date = base_date + timedelta(days=days)
                 sub.status = Subscription.Status.ACTIVE
             except (ValueError, TypeError):
                 return Response({'error': 'extend_days must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        else:
+            if new_plan and new_plan in Subscription.Plan.values:
+                sub.plan = new_plan
+                if new_plan in PLAN_CATALOG:
+                    sub.features_snapshot = PLAN_CATALOG[new_plan]
+                    if not amount_kes:
+                        sub.amount_kes = PLAN_CATALOG[new_plan]['price_kes']
+            if new_status and new_status in Subscription.Status.values:
+                sub.status = new_status
+            if extend_days:
+                try:
+                    days = int(extend_days)
+                    base_date = sub.end_date if (sub.end_date and sub.end_date >= timezone.now().date()) else timezone.now().date()
+                    sub.end_date = base_date + timedelta(days=days)
+                    sub.status = Subscription.Status.ACTIVE
+                except (ValueError, TypeError):
+                    return Response({'error': 'extend_days must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+            if mpesa_ref:
+                sub.mpesa_ref = str(mpesa_ref).strip().upper()
+                sub.last_payment_mode = 'manual_mpesa'
+            if amount_kes:
+                try:
+                    sub.amount_kes = int(amount_kes)
+                except (ValueError, TypeError):
+                    pass
+
         sub.save()
         AuditLog.objects.create(
             user=request.user,
             event_type=AuditLog.EventType.SUBSCRIPTION,
-            action='SUBSCRIPTION_OVERRIDDEN',
+            action=f'SUBSCRIPTION_{action_name.upper()}' if action_name else 'SUBSCRIPTION_OVERRIDDEN',
             model_name='Subscription',
             object_id=str(sub.id),
             metadata={
@@ -347,6 +401,7 @@ class AdminSubscriptionViewSet(viewsets.ModelViewSet):
                 'plan': sub.plan,
                 'status': sub.status,
                 'end_date': str(sub.end_date) if sub.end_date else None,
+                'mpesa_ref': sub.mpesa_ref,
                 'modified_by': request.user.email
             }
         )

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b"/>
+      <stop offset="100%" stop-color="#022c22"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Shield -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#badgeGrad)" stroke="#10b981" stroke-width="2"/>
+  
+  <!-- Stylized Bovine Horns & Cow Head Silhouette -->
+  <path d="M14 20 C18 14 26 18 28 24 C30 18 34 18 36 24 C38 18 46 14 50 20 C46 26 44 32 44 38 C44 48 38 52 32 52 C26 52 20 48 20 38 C20 32 18 26 14 20 Z" fill="#ffffff" fill-opacity="0.95"/>
+  
+  <!-- Stylized Milk Drop In Golden Gradient -->
+  <path d="M32 26 C32 26 38 34 38 38 C38 41.3 35.3 44 32 44 C28.7 44 26 41.3 26 38 C26 34 32 26 32 26 Z" fill="url(#goldGrad)"/>
+  
+  <!-- Leaf accent at top of drop -->
+  <path d="M32 26 C35 22 40 22 40 22 C40 22 40 27 35 29 Z" fill="#34d399"/>
+</svg>

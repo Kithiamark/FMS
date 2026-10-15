@@ -74,6 +74,11 @@ const Dashboard = () => {
   ];
   const usageTotal = usageData.reduce((sum, item) => sum + Number(item.value || 0), 0);
   const currentPlan = subscriptionData?.current?.plan || user?.farm?.subscription?.plan || 'Trial';
+  const subInfo = subscriptionData?.current || user?.farm?.subscription;
+  const isGracePeriod = subInfo?.is_in_grace_period;
+  const isDataLoggingOnly = subInfo?.is_data_logging_only;
+  const isFrozen = subInfo?.status === 'Frozen';
+
   const dairyAlerts = [
     { title: 'Heat Cycle Watch', detail: 'Check cows with restlessness, mounting, or lower feed intake.', icon: HeartPulse, tone: 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-300' },
     { title: 'Calf Vaccine', detail: 'Review calves due for clostridial or deworming schedule this week.', icon: Syringe, tone: 'text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-300' },
@@ -82,6 +87,51 @@ const Dashboard = () => {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
+      {isDataLoggingOnly && (
+        <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 dark:border-rose-900/60 dark:bg-rose-950/40">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-rose-900 dark:text-rose-100">
+                {isFrozen ? 'Account Frozen — Data Logging Mode Active' : 'Subscription Expired — Data Logging Protected'}
+              </p>
+              <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
+                You can continue recording daily milk, herd health, and expenses without disruption. AI advisory and vet consultations are currently paused.
+              </p>
+            </div>
+          </div>
+          <Link to="/settings#membership-section" className="shrink-0">
+            <Button size="sm" className="bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs">
+              Renew via M-Pesa
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {isGracePeriod && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 dark:border-amber-900/60 dark:bg-amber-950/40">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                7-Day Renewal Grace Period Active
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                Your subscription has expired, but all features remain accessible. Settle via M-Pesa to prevent locking of advanced AI and vet tools.
+              </p>
+            </div>
+          </div>
+          <Link to="/settings#membership-section" className="shrink-0">
+            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs">
+              Pay via M-Pesa
+            </Button>
+          </Link>
+        </div>
+      )}
       {/* This screen intentionally aggregates several domains. When adding a new dashboard
           metric, prefer reading from an existing hook so the page remains a composition
           layer rather than a second API client. */}

@@ -180,6 +180,7 @@ REST_FRAMEWORK = {
         'user': '200/minute',
         'login': '5/10min', # Custom scope
         'otp': '3/15min',   # Custom scope
+        'ai_assistant': '20/hour', # Gemini credit protection
     }
 }
 

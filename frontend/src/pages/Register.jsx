@@ -259,7 +259,7 @@ const Register = () => {
                         </div>
 
                         {/* Role Selector Tabs */}
-                        <div className="mb-5 grid grid-cols-3 gap-2 rounded-2xl bg-slate-100/80 p-1.5 border border-slate-200/80">
+                        <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-slate-100/80 p-1.5 border border-slate-200/80">
                             <button
                                 type="button"
                                 onClick={() => handleRoleChange('FARMER')}
@@ -298,6 +298,106 @@ const Register = () => {
                                 <Truck size={18} />
                                 <span>Milk Buyer</span>
                             </button>
+                        </div>
+
+                        {/* Account Tier & Entitlement Details Card */}
+                        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-slate-700">
+                            {selectedRole === 'FARMER' && (
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                                            <Sparkles size={14} className="text-emerald-600" />
+                                            Free 30-Day Full Access Trial
+                                        </span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800">
+                                            KES 0 Upfront
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                                        Test all features without payment. Full AI advisory, vet bookings, milk yields, and cashflow.
+                                    </p>
+                                    <ul className="text-[11px] space-y-1 text-slate-700 font-medium pt-1">
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>Daily milk yield & lactation curve logging</span>
+                                        </li>
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>Full Arvion AI Kenyan dairy advisory & disease risks</span>
+                                        </li>
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>Verified Vet consultations, directory & direct calls</span>
+                                        </li>
+                                        <li className="flex items-center gap-1.5 text-emerald-800 font-semibold">
+                                            <ShieldCheck size={12} className="text-emerald-700 shrink-0" />
+                                            <span>Post-trial: 7-day grace period, then daily logging remains permanently active</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            )}
+
+                            {selectedRole === 'VETERINARIAN' && (
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                                            <Award size={14} className="text-emerald-600" />
+                                            Verified Clinical Partner Account
+                                        </span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                            Free Forever
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                                        Registered veterinary surgeons and paraprofessionals gain verified listing and practice tools.
+                                    </p>
+                                    <ul className="text-[11px] space-y-1 text-slate-700 font-medium pt-1">
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>KVB license verification badge in county directory</span>
+                                        </li>
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>Direct farmer emergency calls, consultations, and messaging</span>
+                                        </li>
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>Authorized access to client animal vaccination & medical history</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            )}
+
+                            {selectedRole === 'AGGREGATOR' && (
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                                            <Building2 size={14} className="text-emerald-600" />
+                                            30-Day Milk Off-Taker Route Trial
+                                        </span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                                            Starter Route
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                                        Digitize collection routes, supplier farmer batches, and transparent daily volume manifests.
+                                    </p>
+                                    <ul className="text-[11px] space-y-1 text-slate-700 font-medium pt-1">
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>Collection route & chilling center intake logging</span>
+                                        </li>
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>Digital lactometer, temperature, and quality rejection logs</span>
+                                        </li>
+                                        <li className="flex items-center gap-1.5">
+                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <span>Transparent farmer payouts & automated SMS receipts</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            )}
                         </div>
 
                         {serverError && (

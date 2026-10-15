@@ -61,9 +61,12 @@ const CommunityPage = () => {
     );
 };
 
+import LoadingScreen from './components/ui/LoadingScreen';
+import NotFound from './pages/NotFound';
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user, loading } = useAuth();
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <LoadingScreen message="Verifying credentials and loading portal..." />;
     if (!user) return <Navigate to="/login" />;
     
     // Role check
@@ -254,8 +257,11 @@ const AppRoutes = () => {
                 </ProtectedRoute>
             } />
 
-            {/* Default Redirect */}
-            <Route path="/" element={<Navigate to="/login" />} />
+            {/* Default Route */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+
+            {/* 404 Catch-All */}
+            <Route path="*" element={<NotFound />} />
         </Routes>
     );
 };

@@ -66,6 +66,9 @@ const Settings = () => {
   };
 
   const [activeModal, setActiveModal] = useState(null);
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
+  const [mpesaReceiptCode, setMpesaReceiptCode] = useState('');
+  const [isSubmittingMpesa, setIsSubmittingMpesa] = useState(false);
 
   const profile = useMemo(() => profileDraft || {
     full_name: user?.full_name || '',
@@ -156,13 +159,48 @@ const Settings = () => {
   const currentPlan = subscriptionData?.current?.plan || user?.farm?.subscription?.plan || 'Trial';
   const plans = subscriptionData?.plans || {};
 
-  const upgradePlan = (plan) => {
-    checkout.mutate({ plan, phone_number: user?.phone_number, test_mode: true }, {
+  const handleOpenMpesaPayment = (plan) => {
+    setSelectedPlanForPayment(plan);
+    setMpesaReceiptCode('');
+    setActiveModal('mpesa_payment');
+  };
+
+  const submitMpesaPayment = (event) => {
+    event.preventDefault();
+    if (!selectedPlanForPayment || !mpesaReceiptCode.trim()) return;
+    setIsSubmittingMpesa(true);
+    checkout.mutate({
+      plan: selectedPlanForPayment,
+      phone_number: user?.phone_number,
+      mpesa_receipt: mpesaReceiptCode.trim().toUpperCase(),
+      mode: 'manual',
+    }, {
       onSuccess: async (data) => {
+        setIsSubmittingMpesa(false);
+        setActiveModal(null);
         await refreshUser();
-        addToast(data.message || 'Subscription updated.', 'success');
+        addToast(data.message || 'M-Pesa reference submitted successfully!', 'success');
       },
-      onError: () => addToast('Could not start checkout.', 'error'),
+      onError: (err) => {
+        setIsSubmittingMpesa(false);
+        const msg = err.response?.data?.error || 'Could not submit payment reference.';
+        addToast(msg, 'error');
+      },
+    });
+  };
+
+  const handleAdminInstantActivate = (plan) => {
+    checkout.mutate({
+      plan,
+      phone_number: user?.phone_number,
+      mode: 'test',
+    }, {
+      onSuccess: async (data) => {
+        setActiveModal(null);
+        await refreshUser();
+        addToast(data.message || 'Plan activated.', 'success');
+      },
+      onError: () => addToast('Could not activate plan.', 'error'),
     });
   };
 
@@ -296,30 +334,72 @@ const Settings = () => {
         <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="flex items-center gap-2 font-heading text-xl font-bold text-slate-950 dark:text-slate-100"><CreditCard size={20} /> Membership & Payments</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Test mode activates plans immediately while M-Pesa API keys are pending.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Seamlessly upgrade or renew via M-Pesa. Manual receipts are instantly processed and recorded.
+            </p>
           </div>
-          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-            <ShieldCheck size={16} /> Current: {currentPlan}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {user?.farm?.subscription?.is_data_logging_only && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                Data-Logging Only Mode
+              </span>
+            )}
+            {user?.farm?.subscription?.is_in_grace_period && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                7-Day Grace Period
+              </span>
+            )}
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+              <ShieldCheck size={16} /> Current: {currentPlan}
+            </span>
+          </div>
         </div>
-        <div className="grid gap-4 lg:grid-cols-4">
+
+        {user?.farm?.subscription?.is_data_logging_only && (
+          <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-xs text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
+            <span className="font-bold block text-sm mb-1">⚠️ Subscription Expired — Data Logging Protected</span>
+            Your daily milk yield recording, animal logs, and expenses remain fully operational. Premium AI advisory, vet consultations, and predictive herd analytics are locked until your subscription is renewed.
+          </div>
+        )}
+
+        {user?.farm?.subscription?.is_in_grace_period && (
+          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+            <span className="font-bold block text-sm mb-1">⏳ 7-Day Renewal Grace Period Active</span>
+            Your subscription has expired, but all features remain temporarily unlocked. Please complete your M-Pesa renewal below before the grace period ends to avoid interruption.
+          </div>
+        )}
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Object.entries(plans).map(([plan, details]) => (
-            <div key={plan} className={`rounded-2xl border p-4 ${currentPlan === plan ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950'}`}>
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">{details.name}</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-950 dark:text-slate-100">KES {details.price_kes}</p>
+            <div key={plan} className={`rounded-2xl border p-4 flex flex-col justify-between ${currentPlan === plan ? 'border-emerald-300 bg-emerald-50/70 dark:border-emerald-500/40 dark:bg-emerald-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950'}`}>
+              <div>
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">{details.name}</p>
+                    <p className="mt-1 text-2xl font-bold text-slate-950 dark:text-slate-100">KES {details.price_kes.toLocaleString()}</p>
+                  </div>
+                  {currentPlan === plan && <CheckCircle2 className="text-emerald-700 shrink-0" size={22} />}
                 </div>
-                {currentPlan === plan && <CheckCircle2 className="text-emerald-700" size={22} />}
+                <ul className="mb-4 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                  {details.features?.map(feature => <li key={feature} className="flex items-start gap-1.5">• <span>{feature}</span></li>)}
+                </ul>
               </div>
-              <ul className="mb-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                {details.features?.slice(0, 4).map(feature => <li key={feature}>• {feature}</li>)}
-              </ul>
-              {plan !== 'Trial' && (
-                <Button type="button" disabled={checkout.isPending || currentPlan === plan} onClick={() => upgradePlan(plan)} className="w-full">
-                  {currentPlan === plan ? 'Active' : 'Test Checkout'}
-                </Button>
-              )}
+              <div className="pt-2">
+                {plan === 'Trial' ? (
+                  <Button type="button" disabled variant="outline" className="w-full text-xs">
+                    {currentPlan === 'Trial' ? 'Active Trial' : 'Free 30-Day Onboarding'}
+                  </Button>
+                ) : (
+                  <Button 
+                    type="button" 
+                    disabled={checkout.isPending} 
+                    onClick={() => handleOpenMpesaPayment(plan)} 
+                    className={`w-full text-xs ${currentPlan === plan ? 'bg-emerald-700 hover:bg-emerald-800 text-white' : ''}`}
+                  >
+                    {currentPlan === plan ? 'Renew / Extend with M-Pesa' : 'Subscribe via M-Pesa'}
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -630,6 +710,94 @@ const Settings = () => {
             )}
           </div>
           <Button type="submit" disabled={createWorker.isPending || updateWorker.isPending} className="w-full">{editingWorkerId ? 'Update Worker' : 'Create Worker'}</Button>
+        </form>
+      </Modal>
+
+      {/* M-PESA PAYMENT MODAL */}
+      <Modal isOpen={activeModal === 'mpesa_payment'} onClose={() => setActiveModal(null)} title="M-Pesa Subscription Payment">
+        <form onSubmit={submitMpesaPayment} className="space-y-4 text-xs">
+          {selectedPlanForPayment && plans[selectedPlanForPayment] && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 dark:border-emerald-800 dark:bg-emerald-950/40">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Selected Plan</span>
+                  <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-slate-100">
+                    {plans[selectedPlanForPayment].name}
+                  </h3>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Total Payable</span>
+                  <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400">
+                    KES {plans[selectedPlanForPayment].price_kes?.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950">
+            <span className="font-bold text-slate-900 dark:text-slate-100 block">Payment Steps:</span>
+            <div className="space-y-2 text-slate-600 dark:text-slate-300">
+              <div className="flex items-start gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-bold text-white">1</span>
+                <div>
+                  Open <strong>M-Pesa</strong> &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Buy Goods and Services</strong>.
+                  <div className="mt-1 font-mono font-bold text-emerald-800 dark:text-emerald-300 text-xs">
+                    Till Number: 882190 (FMS Dairy)
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-bold text-white">2</span>
+                <div>
+                  Or choose <strong>Paybill: 247247</strong>, Account: <strong className="font-mono">{user?.phone_number || 'FARM-01'}</strong>.
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-bold text-white">3</span>
+                <div>
+                  Enter the exact amount <strong>KES {selectedPlanForPayment && plans[selectedPlanForPayment] ? plans[selectedPlanForPayment].price_kes?.toLocaleString() : ''}</strong> and complete with your M-Pesa PIN.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-900 dark:text-slate-100 mb-1">
+              M-Pesa Confirmation Code <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. QK87YTR45P"
+              value={mpesaReceiptCode}
+              onChange={e => setMpesaReceiptCode(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono uppercase dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+              Paste or type the 10-character confirmation code from your Safaricom M-Pesa SMS.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => handleAdminInstantActivate(selectedPlanForPayment)}
+                className="text-[11px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
+              >
+                ⚡ Admin Instant Activate
+              </button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" size="sm" type="button" onClick={() => setActiveModal(null)}>
+                Cancel
+              </Button>
+              <Button size="sm" type="submit" disabled={isSubmittingMpesa} className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold">
+                {isSubmittingMpesa ? 'Submitting...' : 'Submit Payment Reference'}
+              </Button>
+            </div>
+          </div>
         </form>
       </Modal>
     </div>

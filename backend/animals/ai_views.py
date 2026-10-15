@@ -8,6 +8,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from animals.models import Animal, HealthRecord, VaccinationRecord
@@ -414,6 +415,8 @@ def _generate_fallback_response(message: str, farm_context: dict) -> str:
 
 class AIAssistantChatView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai_assistant'
 
     def post(self, request):
         user_message = (request.data.get("message") or "").strip()
@@ -423,8 +426,19 @@ class AIAssistantChatView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        history = request.data.get("history", [])
         farm = get_user_farm(request.user)
+        if farm:
+            sub = getattr(farm, 'subscription', None)
+            if sub and sub.is_data_logging_only:
+                return Response(
+                    {
+                        "reply": "⚠️ Your subscription has expired past the 7-day grace period (Data-Logging Only mode). Daily milk and animal records remain fully active, but AI advisory requires an active subscription. Please visit Settings to renew.",
+                        "data_logging_only": True,
+                    },
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+
+        history = request.data.get("history", [])
 
         if farm:
             animals_qs = Animal.objects.filter(farm=farm, is_active=True)

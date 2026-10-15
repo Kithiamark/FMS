@@ -185,6 +185,8 @@ class UserSerializer(serializers.ModelSerializer):
                 'status': subscription.status if subscription else Subscription.Status.PENDING,
                 'end_date': subscription.end_date if subscription else None,
                 'features': subscription.features_snapshot.get('features', []) if subscription else PLAN_CATALOG[Subscription.Plan.TRIAL]['features'],
+                'is_in_grace_period': subscription.is_in_grace_period if subscription else False,
+                'is_data_logging_only': subscription.is_data_logging_only if subscription else False,
             },
         }
 

@@ -43,9 +43,10 @@ class AdminSubscriptionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'farm', 'farm_name', 'farm_county', 'owner_name', 
             'owner_phone', 'owner_email', 'plan', 'status', 'start_date', 
-            'end_date', 'trial_ends_at', 'amount_kes', 'mpesa_ref', 'created_at'
+            'end_date', 'trial_ends_at', 'amount_kes', 'mpesa_ref', 
+            'last_payment_mode', 'is_in_grace_period', 'is_data_logging_only', 'created_at'
         ]
-        read_only_fields = ['id', 'farm', 'created_at']
+        read_only_fields = ['id', 'farm', 'created_at', 'is_in_grace_period', 'is_data_logging_only']
 
     def get_owner_phone(self, obj):
         if obj.farm and obj.farm.owner and obj.farm.owner.phone_number:

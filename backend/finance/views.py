@@ -123,16 +123,29 @@ class SubscriptionViewSet(viewsets.ViewSet):
         subscription = self._ensure_subscription()
         plan = request.data.get('plan')
         phone_number = request.data.get('phone_number', '')
-        if plan not in PLAN_CATALOG or plan == Subscription.Plan.TRIAL:
-            return Response({'error': 'Choose Basic, Premium, or Enterprise.'}, status=400)
+        mpesa_receipt = (request.data.get('mpesa_receipt') or request.data.get('mpesa_ref') or '').strip().upper()
+        mode = request.data.get('mode', 'manual') # 'manual' or 'test'
 
-        test_mode = bool(request.data.get('test_mode', True)) or not all([
-            getattr(settings, 'MPESA_CONSUMER_KEY', ''),
-            getattr(settings, 'MPESA_CONSUMER_SECRET', ''),
-            getattr(settings, 'MPESA_SHORTCODE', ''),
-            getattr(settings, 'MPESA_PASSKEY', ''),
-        ])
-        status_value = PaymentIntent.Status.TEST_APPROVED if test_mode else PaymentIntent.Status.PENDING_KEYS
+        if plan not in PLAN_CATALOG or plan == Subscription.Plan.TRIAL:
+            return Response({'error': 'Please select a valid tier.'}, status=400)
+
+        # If user is admin or explicitly in test mode with no receipt
+        is_admin = getattr(request.user, 'role', '') == 'ADMIN' or request.user.is_staff
+        is_test = mode == 'test' and is_admin
+
+        if is_test:
+            status_value = PaymentIntent.Status.TEST_APPROVED
+            notes = 'Admin test mode activated subscription.'
+            provider_ref = f"TEST-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+        elif mpesa_receipt:
+            status_value = PaymentIntent.Status.PENDING
+            notes = f'Manual M-Pesa transaction submitted. Awaiting admin verification. Receipt: {mpesa_receipt}'
+            provider_ref = mpesa_receipt
+        else:
+            status_value = PaymentIntent.Status.PENDING_KEYS
+            notes = 'Awaiting payment confirmation.'
+            provider_ref = ''
+
         intent = PaymentIntent.objects.create(
             farm=subscription.farm,
             subscription=subscription,
@@ -140,12 +153,12 @@ class SubscriptionViewSet(viewsets.ViewSet):
             amount_kes=PLAN_CATALOG[plan]['price_kes'],
             phone_number=phone_number,
             status=status_value,
-            test_mode=test_mode,
-            provider_reference=f"TEST-{timezone.now().strftime('%Y%m%d%H%M%S')}" if test_mode else '',
-            notes='Test mode activated subscription without contacting M-Pesa.' if test_mode else 'Waiting for real M-Pesa API integration.',
+            test_mode=is_test,
+            provider_reference=provider_ref,
+            notes=notes,
         )
 
-        if test_mode:
+        if is_test:
             today = timezone.now().date()
             subscription.plan = plan
             subscription.status = Subscription.Status.ACTIVE
@@ -158,18 +171,29 @@ class SubscriptionViewSet(viewsets.ViewSet):
             subscription.save()
             intent.completed_at = timezone.now()
             intent.save(update_fields=['completed_at'])
+        elif mpesa_receipt:
+            subscription.mpesa_ref = mpesa_receipt
+            subscription.last_payment_mode = 'manual_mpesa'
+            subscription.save(update_fields=['mpesa_ref', 'last_payment_mode'])
 
         AuditLog.objects.create(
             user=request.user,
             farm=subscription.farm,
             event_type=AuditLog.EventType.SUBSCRIPTION,
-            action='CHECKOUT_CREATED',
+            action='CHECKOUT_SUBMITTED',
             model_name='PaymentIntent',
             object_id=str(intent.id),
-            metadata={'plan': plan, 'amount_kes': intent.amount_kes, 'test_mode': test_mode},
+            metadata={'plan': plan, 'amount_kes': intent.amount_kes, 'mpesa_ref': provider_ref, 'mode': mode},
         )
+
+        message = (
+            'Plan activated in admin test mode.' if is_test
+            else f'M-Pesa payment reference {mpesa_receipt} submitted successfully! Your account will be activated upon verification.' if mpesa_receipt
+            else 'Payment intent registered. Please submit your M-Pesa confirmation code.'
+        )
+
         return Response({
             'subscription': SubscriptionSerializer(subscription).data,
             'payment': PaymentIntentSerializer(intent).data,
-            'message': 'Test payment approved and plan activated.' if test_mode else 'Payment intent created. Add M-Pesa keys to complete live checkout.',
+            'message': message,
         })

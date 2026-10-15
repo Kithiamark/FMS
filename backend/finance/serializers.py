@@ -21,6 +21,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     plan_label = serializers.CharField(source='get_plan_display', read_only=True)
     feature_list = serializers.SerializerMethodField()
     monthly_price_kes = serializers.SerializerMethodField()
+    is_in_grace_period = serializers.BooleanField(read_only=True)
+    is_data_logging_only = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Subscription
@@ -37,10 +39,12 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
 
     def get_feature_list(self, obj):
-        return obj.features_snapshot.get('features', [])
+        if obj.features_snapshot and 'features' in obj.features_snapshot:
+            return obj.features_snapshot.get('features', [])
+        return PLAN_CATALOG.get(obj.plan, {}).get('features', [])
 
     def get_monthly_price_kes(self, obj):
-        return PLAN_CATALOG[obj.plan]['price_kes']
+        return PLAN_CATALOG.get(obj.plan, {}).get('price_kes', 0)
 
 class MpesaTransactionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -54,42 +58,62 @@ PLAN_CATALOG = {
         'price_kes': 0,
         'name': 'Free first month',
         'features': [
-            'One month of data entry to train the farm learning profile',
-            'Milk, herd, finance, and alert logging',
-            'Basic dashboard summaries',
-            'Upgrade prompts when AI or vet features need a paid tier',
+            'One month full trial to train the farm learning profile',
+            'Daily milk yield and herd record logging',
+            'Expenses, revenues, and cashflow tracking',
+            'Full AI assistant and vet directory access during trial',
         ],
     },
     Subscription.Plan.BASIC: {
-        'price_kes': 500,
+        'price_kes': 750,
         'name': 'Basic',
         'features': [
-            'Vet ratings, direct call, booking, and texting',
-            'Better AI production and health analysis',
-            'Farmer communities for county trends, alerts, and dairy prices',
-            'SMS and in-app notifications',
+            'Unlimited milk, herd, and financial record logging',
+            'Direct vet consultation requests, texting, and reviews',
+            'AI herd production & disease risk advisory',
+            'County community dairy trends and milk pricing alerts',
         ],
     },
     Subscription.Plan.PREMIUM: {
-        'price_kes': 1000,
+        'price_kes': 1500,
         'name': 'Premium',
         'features': [
             'Everything in Basic',
-            'Personalised newsletters',
-            'Weather-aware routines',
-            'Breed tips and personal vet sections',
-            'Deeper AI recommendations from farm history',
+            'Personalised breeding and lactation optimization tips',
+            'Weather-aware herd management routines',
+            'Automated SMS notifications and vaccination reminders',
+            'Deeper AI diagnostic recommendations from historical yields',
         ],
     },
     Subscription.Plan.ENTERPRISE: {
-        'price_kes': 2000,
+        'price_kes': 3000,
         'name': 'Enterprise',
         'features': [
             'Everything in Premium',
-            'Head farmer admin account',
-            'Worker accounts for activity logging',
-            'Team oversight and farm activity audit trails',
-            'Large-farm operating view',
+            'Multi-user farm management with worker sub-accounts',
+            'Worker activity logging and audit trail controls',
+            'Commercial bulk reporting and exportable tax ledgers',
+            'Dedicated agricultural support desk',
+        ],
+    },
+    Subscription.Plan.BUYER_STARTER: {
+        'price_kes': 3500,
+        'name': 'Milk Buyer Starter Route',
+        'features': [
+            'Single collection route and chilling station management',
+            'Digital milk intake logging and supplier farmer directory',
+            'Automated milk collection SMS receipts for farmers',
+            'Lactometer and quality rejection recording',
+        ],
+    },
+    Subscription.Plan.BUYER_COMMERCIAL: {
+        'price_kes': 7500,
+        'name': 'Milk Buyer Commercial Co-op',
+        'features': [
+            'Multi-route collection and bulk chilling tank tracking',
+            'Batch quality, density, and fat testing ledger',
+            'Automated M-Pesa farmer payroll and payout export files',
+            'Unlimited supplier farmers and cooperative dispatch manifests',
         ],
     },
 }

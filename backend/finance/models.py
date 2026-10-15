@@ -1,5 +1,7 @@
+from datetime import timedelta
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from farms.models import Farm
 
 class Expense(models.Model):
@@ -48,10 +50,13 @@ class Subscription(models.Model):
         BASIC = 'Basic', 'Basic'
         PREMIUM = 'Premium', 'Premium'
         ENTERPRISE = 'Enterprise', 'Enterprise'
+        BUYER_STARTER = 'BuyerStarter', 'Milk Buyer Starter'
+        BUYER_COMMERCIAL = 'BuyerCommercial', 'Milk Buyer Commercial'
 
     class Status(models.TextChoices):
         ACTIVE = 'Active', 'Active'
         EXPIRED = 'Expired', 'Expired'
+        FROZEN = 'Frozen', 'Frozen'
         PENDING = 'Pending', 'Pending'
         CANCELLED = 'Cancelled', 'Cancelled'
 
@@ -67,6 +72,40 @@ class Subscription(models.Model):
     mpesa_ref = models.CharField(max_length=50, blank=True, null=True)
     mpesa_checkout_id = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_in_grace_period(self):
+        """
+        Returns True if subscription has expired within the past 7 days.
+        """
+        if self.status == self.Status.FROZEN:
+            return False
+        today = timezone.now().date()
+        target_date = self.end_date or self.trial_ends_at
+        if target_date and target_date < today <= (target_date + timedelta(days=7)):
+            return True
+        return False
+
+    @property
+    def is_data_logging_only(self):
+        """
+        Returns True if subscription is frozen, or expired past the 7-day grace period.
+        In this mode, daily milk/cattle/finance data logging is preserved,
+        while AI, vet bookings, and advanced analytics are restricted.
+        """
+        if self.status == self.Status.FROZEN:
+            return True
+        if self.status == self.Status.ACTIVE:
+            target_date = self.end_date or self.trial_ends_at
+            if target_date and target_date < timezone.now().date():
+                today = timezone.now().date()
+                return today > (target_date + timedelta(days=7))
+            return False
+        today = timezone.now().date()
+        target_date = self.end_date or self.trial_ends_at
+        if target_date:
+            return today > (target_date + timedelta(days=7))
+        return self.status != self.Status.ACTIVE
 
     def __str__(self):
         return f"{self.farm.name} - {self.plan} ({self.status})"
