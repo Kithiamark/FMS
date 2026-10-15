@@ -121,10 +121,15 @@ ASGI_APPLICATION = 'fms_core.asgi.application'
 
 import dj_database_url
 
+db_url = config('DATABASE_URL', default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+default_conn_max_age = 0 if ('-pooler' in db_url or 'pooler' in db_url) else 600
+conn_max_age = config('CONN_MAX_AGE', default=default_conn_max_age, cast=int)
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-        conn_max_age=600,
+        default=db_url,
+        conn_max_age=conn_max_age,
+        conn_health_checks=True,
     )
 }
 

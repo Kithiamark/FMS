@@ -32,3 +32,5 @@ Thumbs.db
 # Scratch scripts
 fix_*.py
 update_*.py
+.neon
+.env.local
