@@ -241,3 +241,30 @@ class VetProfileSecurityTests(TestCase):
             object_id=str(self.vet_profile_1.id)
         ).exists())
 
+    def test_vet_can_schedule_and_retrieve_visit(self):
+        from vets.models import VetVisit
+        self.client.force_authenticate(user=self.vet_user_2)
+        
+        # Schedule visit
+        res = self.client.post('/api/v1/vet/data/visits/', {
+            'farm': self.farm.id,
+            'scheduled_date': '2026-10-20T10:00:00Z',
+            'visit_type': 'Routine',
+            'notes': 'Checking heifer vaccination response'
+        }, format='json')
+        
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['farm'], self.farm.name)
+        self.assertEqual(res.data['type'], 'Routine')
+        self.assertEqual(res.data['notes'], 'Checking heifer vaccination response')
+        
+        # Verify persistence in database
+        visit = VetVisit.objects.filter(vet=self.vet_profile_2, farm=self.farm).first()
+        self.assertIsNotNone(visit)
+        self.assertEqual(visit.status, VetVisit.Status.SCHEDULED)
+
+        # Retrieve visits list
+        res_list = self.client.get('/api/v1/vet/data/visits/')
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+        self.assertTrue(any(v['id'] == visit.id for v in res_list.data))
+

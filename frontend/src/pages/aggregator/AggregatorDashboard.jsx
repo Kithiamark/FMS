@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import { useQuery } from '@tanstack/react-query';
+import api from '../../api/axios';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const MetricCard = ({ title, value, icon, trend }) => {
@@ -44,36 +46,14 @@ const MetricCard = ({ title, value, icon, trend }) => {
     );
 };
 
-// Intelligence bulletins dataset
-const PAST_BULLETINS = [
-    {
-        id: 1,
-        title: 'Market Prices hit KES 50/L average in Nairobi',
-        date: 'Oct 1, 2026',
-        category: 'Pricing Dynamics',
-        impact: 'High Margin Opportunity',
-        summary: 'Farmgate vs processor spread widening as school term opening spikes institutional consumption.',
-        details: 'Nairobi processors have raised intake contracts to KES 50-53/L amidst school reopening demand. Aggregators securing milk at KES 42-45/L from Kiambu and Nyandarua are capturing gross spreads of KES 7-8/L. Recommendation: Lock in 30-day volume commitments with commercial cooperatives before processor quotas saturate.'
-    },
-    {
-        id: 2,
-        title: 'Feed shortages predicted for Q4',
-        date: 'Sep 24, 2026',
-        category: 'Supply Risk',
-        impact: 'Medium Production Risk',
-        summary: 'Maize silage reserves down 22% in Rift Valley; concentrate prices up 14%.',
-        details: 'Poor distribution of short rains has curtailed green fodder yields across the central rift. Commercial dairy farmers are rationing concentrates. Aggregators should expect morning milk volumes to decline by 10% through November unless fodder supplements (Boma Rhodes hay) are co-financed.'
-    },
-    {
-        id: 3,
-        title: 'National Cold-Chain Clean Energy Grants',
-        date: 'Sep 12, 2026',
-        category: 'Capital Subsidies',
-        impact: '30% Matching Co-financing',
-        summary: 'Ministry of Agriculture matching grants announced for solarized bulk milk coolers.',
-        details: 'Eligible licensed aggregators and dairy hubs can apply for 30% capital expenditure co-financing for 1,000L to 5,000L solar-assisted direct expansion milk tanks. Applications open until November 30, 2026 via the Dairy Board procurement portal.'
+const fetchAnnouncements = async () => {
+    try {
+        const { data } = await api.get('/admin/announcements/');
+        return data;
+    } catch {
+        return [];
     }
-];
+};
 
 const AggregatorDashboard = () => {
     const { addToast } = useToast();
@@ -117,6 +97,23 @@ const AggregatorDashboard = () => {
     const { data: connections = [], isLoading: connectionsLoading } = useAggregatorConnections();
     const { data: collections = [], isLoading: collectionsLoading } = useMilkCollections();
     const logCollectionMutation = useLogCollectionMutation();
+
+    const { data: rawAnnouncements = [], isLoading: bulletinsLoading } = useQuery({
+        queryKey: ['marketAnnouncements'],
+        queryFn: fetchAnnouncements
+    });
+
+    const bulletins = useMemo(() => {
+        return (rawAnnouncements || []).map(a => ({
+            id: a.id,
+            title: a.title,
+            date: a.created_at ? new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
+            category: a.target_audience || 'Market Intelligence',
+            impact: 'Industry Advisory',
+            summary: a.body ? (a.body.length > 140 ? a.body.slice(0, 140) + '...' : a.body) : '',
+            details: a.body || ''
+        }));
+    }, [rawAnnouncements]);
 
     // Collection logging form state
     const [isLogging, setIsLogging] = useState(false);
@@ -589,32 +586,38 @@ const AggregatorDashboard = () => {
                         </div>
                         
                         <h3 className="text-lg font-bold text-slate-900 mt-8 mb-4">Past Intelligence Bulletins</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {PAST_BULLETINS.map((b) => (
-                                <div 
-                                    key={b.id} 
-                                    onClick={() => setSelectedBulletin(b)} 
-                                    className="backdrop-blur-xl bg-white/80 border border-white/60 p-5 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group"
-                                >
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div className="p-2 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                            <FileText className="w-5 h-5" />
+                        {bulletins.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {bulletins.map((b) => (
+                                    <div 
+                                        key={b.id} 
+                                        onClick={() => setSelectedBulletin(b)} 
+                                        className="backdrop-blur-xl bg-white/80 border border-white/60 p-5 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group"
+                                    >
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="p-2 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                <FileText className="w-5 h-5" />
+                                            </div>
+                                            <span className="text-xs font-semibold text-slate-400">{b.date}</span>
                                         </div>
-                                        <span className="text-xs font-semibold text-slate-400">{b.date}</span>
+                                        <div className="mb-2">
+                                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider bg-blue-50/80 px-2 py-0.5 rounded-md border border-blue-100">
+                                                {b.category}
+                                            </span>
+                                        </div>
+                                        <h4 className="font-bold text-slate-900 text-sm mb-1 group-hover:text-blue-700 transition-colors">{b.title}</h4>
+                                        <p className="text-slate-500 text-xs font-medium line-clamp-2">{b.summary}</p>
+                                        <div className="mt-3 text-xs font-bold text-blue-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                            Read breakdown <ChevronRight size={13} />
+                                        </div>
                                     </div>
-                                    <div className="mb-2">
-                                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider bg-blue-50/80 px-2 py-0.5 rounded-md border border-blue-100">
-                                            {b.category}
-                                        </span>
-                                    </div>
-                                    <h4 className="font-bold text-slate-900 text-sm mb-1 group-hover:text-blue-700 transition-colors">{b.title}</h4>
-                                    <p className="text-slate-500 text-xs font-medium line-clamp-2">{b.summary}</p>
-                                    <div className="mt-3 text-xs font-bold text-blue-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                        Read breakdown <ChevronRight size={13} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="backdrop-blur-xl bg-white/60 border border-slate-200/80 rounded-2xl p-8 text-center text-slate-500 text-sm">
+                                No published intelligence bulletins at this time. Platform announcements and county price advisories will appear here.
+                            </div>
+                        )}
                     </div>
                 )}
 

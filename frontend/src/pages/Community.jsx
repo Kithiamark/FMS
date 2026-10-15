@@ -69,13 +69,6 @@ const postTypes = [
   ['TREND', 'Trend'],
 ];
 
-const dairyAlerts = [
-  'Kiambu milk price average: KES 52/L this morning',
-  'Heat cycle watch: check cows showing mounting behavior after evening feed',
-  'Calf vaccine reminder: confirm 3-month schedule before Friday',
-  'Surplus milk request: processors asking for clean chilled milk before 10 AM',
-];
-
 const typeIcon = {
   PRICE: BadgeDollarSign,
   ALERT: AlertTriangle,
@@ -163,12 +156,30 @@ const Community = () => {
     });
   };
 
+  const tickerItems = useMemo(() => {
+    const alertPosts = posts.filter((p) => ['PRICE', 'ALERT', 'TREND', 'SURPLUS'].includes(p.post_type));
+    if (alertPosts.length > 0) {
+      return alertPosts.slice(0, 6).map((p) => {
+        if (p.post_type === 'PRICE' && p.milk_price_kes) {
+          return `${p.title}: KES ${p.milk_price_kes}/L reported`;
+        }
+        if (p.post_type === 'SURPLUS' && p.litres_available) {
+          return `${p.title}: ${p.litres_available}L surplus milk available`;
+        }
+        return `${p.title}: ${p.body ? p.body.slice(0, 80) : ''}`;
+      });
+    }
+    return [
+      'Welcome to FMS County Dairy Community — post daily milk prices, local market trends, and herd alerts to coordinate with nearby farmers.',
+    ];
+  }, [posts]);
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-4">
       <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-700 text-white shadow-sm dark:border-emerald-500/30 dark:bg-emerald-950">
         <div className="flex whitespace-nowrap py-3 text-sm font-semibold">
           <div className="animate-[marquee_28s_linear_infinite]">
-            {dairyAlerts.concat(dairyAlerts).map((alert, index) => (
+            {tickerItems.concat(tickerItems).map((alert, index) => (
               <span key={`${alert}-${index}`} className="mx-8 inline-flex items-center gap-2">
                 <BellRing size={16} /> {alert}
               </span>

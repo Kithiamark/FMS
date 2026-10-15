@@ -37,11 +37,19 @@ def schedule_visit_alert(sender, instance, created, **kwargs):
     On VetVisit created: create an Alert for the farm 24hrs before visit date
     """
     if created and instance.status == VetVisit.Status.SCHEDULED:
-        alert_time = instance.scheduled_date - timedelta(hours=24)
+        sched_date = instance.scheduled_date
+        if isinstance(sched_date, str):
+            from django.utils.dateparse import parse_datetime
+            sched_date = parse_datetime(sched_date)
+        if not sched_date:
+            return
+            
+        alert_time = sched_date - timedelta(hours=24)
         
         # Ensure we don't schedule in the past
         if alert_time > timezone.now():
-            msg = f"Reminder: Dr. {instance.vet.user.full_name} has a scheduled {instance.visit_type} visit tomorrow at {instance.scheduled_date.strftime('%H:%M')}."
+            time_str = sched_date.strftime('%H:%M') if hasattr(sched_date, 'strftime') else ''
+            msg = f"Reminder: Dr. {instance.vet.user.full_name} has a scheduled {instance.visit_type} visit tomorrow at {time_str}."
             
             Alert.objects.create(
                 farm=instance.farm,

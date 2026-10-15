@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { AdminLayout } from '../../components/Layout/AdminLayout';
@@ -56,21 +57,13 @@ const AdminDashboard = () => {
         setTimeout(() => setCopiedOtpId(null), 2500);
     };
 
-    // Mock chart data (replace with real if API supports historical)
-    const revenueData = [
-        { name: 'Jan', basic: 4000, standard: 2400, premium: 2400 },
-        { name: 'Feb', basic: 3000, standard: 1398, premium: 2210 },
-        { name: 'Mar', basic: 2000, standard: 9800, premium: 2290 },
-        { name: 'Apr', basic: 2780, standard: 3908, premium: 2000 },
-        { name: 'May', basic: 1890, standard: 4800, premium: 2181 },
-        { name: 'Jun', basic: 2390, standard: 3800, premium: 2500 },
-    ];
+    const revenueData = data?.revenue_trend || [];
 
     const pieData = [
         { name: 'Basic', value: data?.active_subscriptions?.basic || 0, color: '#52525b' },
-        { name: 'Standard', value: data?.active_subscriptions?.standard || 0, color: '#3b82f6' },
         { name: 'Premium', value: data?.active_subscriptions?.premium || 0, color: '#2563eb' },
         { name: 'Enterprise', value: data?.active_subscriptions?.enterprise || 0, color: '#eab308' },
+        { name: 'Buyer Route', value: (data?.active_subscriptions?.buyer_starter || 0) + (data?.active_subscriptions?.buyer_commercial || 0), color: '#10b981' },
     ];
 
     if (isLoading) return <AdminLayout><div className="text-white p-8">Loading analytics...</div></AdminLayout>;
@@ -85,12 +78,12 @@ const AdminDashboard = () => {
 
                 {/* KPI Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                    <StatCard title="Total Farmers" value={data?.total_farmers} trend={12} icon={Users} color="text-blue-500" />
+                    <StatCard title="Total Farmers" value={data?.total_farmers ?? 0} trend={12} icon={Users} color="text-blue-500" />
                     <StatCard title="Active Subs" value={Object.values(data?.active_subscriptions || {}).reduce((a, b) => a + b, 0)} trend={5} icon={CreditCard} color="text-green-500" />
-                    <StatCard title="MRR (KES)" value={`Ksh ${data?.monthly_revenue_kes?.toLocaleString()}`} trend={8.2} icon={TrendingUp} color="text-yellow-500" />
-                    <StatCard title="Total Vets" value={data?.total_vets} subtext="Total registered" icon={Stethoscope} color="text-purple-500" />
-                    <StatCard title="System Errors" value={data?.system_errors_24h} subtext="Last 24h" icon={AlertCircle} color="text-red-500" />
-                    <StatCard title="Churn Rate" value="2.4%" subtext="Last 30 days" icon={Activity} color="text-gray-400" />
+                    <StatCard title="MRR (KES)" value={`Ksh ${(data?.monthly_revenue_kes || 0).toLocaleString()}`} trend={8.2} icon={TrendingUp} color="text-yellow-500" />
+                    <StatCard title="Total Vets" value={data?.total_vets ?? 0} subtext="Total registered" icon={Stethoscope} color="text-purple-500" />
+                    <StatCard title="System Errors" value={data?.system_errors_24h ?? 0} subtext="Last 24h" icon={AlertCircle} color="text-red-500" />
+                    <StatCard title="Churn Rate" value={`${data?.churn_rate ?? 0}%`} subtext="All-time churn" icon={Activity} color="text-gray-400" />
                 </div>
 
                 {/* Charts Row */}
@@ -108,8 +101,8 @@ const AdminDashboard = () => {
                                         itemStyle={{ color: '#e4e4e7' }}
                                     />
                                     <Bar dataKey="basic" stackId="a" fill="#52525b" />
-                                    <Bar dataKey="standard" stackId="a" fill="#3b82f6" />
                                     <Bar dataKey="premium" stackId="a" fill="#2563eb" />
+                                    <Bar dataKey="enterprise" stackId="a" fill="#eab308" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -206,45 +199,76 @@ const AdminDashboard = () => {
                     <div className="bg-admin-card border border-gray-800 rounded-xl overflow-hidden">
                         <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                             <h3 className="text-white font-bold">Recent Signups</h3>
-                            <button className="text-xs text-admin-accent hover:text-white">View All</button>
+                            <Link to="/admin/farmers" className="text-xs text-admin-accent hover:text-white transition">View All</Link>
                         </div>
                         <table className="w-full text-sm text-left text-gray-400">
                             <thead className="bg-gray-900 text-xs uppercase font-medium">
                                 <tr>
                                     <th className="px-6 py-3">User</th>
-                                    <th className="px-6 py-3">Plan</th>
+                                    <th className="px-6 py-3">Plan / Role</th>
                                     <th className="px-6 py-3">Date</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                <tr className="hover:bg-gray-800/50">
-                                    <td className="px-6 py-4 font-medium text-white">John Doe</td>
-                                    <td className="px-6 py-4"><span className="px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-xs">Standard</span></td>
-                                    <td className="px-6 py-4">Today</td>
-                                </tr>
-                                {/* Add more mock rows or map real data */}
+                                {data?.recent_signups?.length > 0 ? (
+                                    data.recent_signups.map((user) => (
+                                        <tr key={user.id} className="hover:bg-gray-800/50">
+                                            <td className="px-6 py-4 font-medium text-white">
+                                                <div>{user.name}</div>
+                                                <div className="text-[11px] text-gray-500 font-mono">{user.phone}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 rounded text-xs ${
+                                                    user.plan === 'Enterprise' || user.plan === 'BuyerCommercial' ? 'bg-amber-500/10 text-amber-400' :
+                                                    user.plan === 'Premium' || user.plan === 'BuyerStarter' ? 'bg-blue-500/10 text-blue-400' :
+                                                    'bg-gray-800 text-gray-300'
+                                                }`}>
+                                                    {user.plan}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-mono">{user.date}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="3" className="px-6 py-8 text-center text-gray-500 text-xs">
+                                            No recent signups found.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
 
                     {/* System Logs Feed */}
                     <div className="bg-admin-card border border-gray-800 rounded-xl overflow-hidden flex flex-col">
-                        <div className="p-6 border-b border-gray-800">
+                        <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                             <h3 className="text-white font-bold flex items-center gap-2">
                                 <AlertCircle size={16} className="text-red-500" /> System Alerts
                             </h3>
+                            <Link to="/admin/logs" className="text-xs text-admin-accent hover:text-white transition">All Logs</Link>
                         </div>
                         <div className="p-4 space-y-2 font-mono text-xs overflow-y-auto max-h-[300px]">
-                            <div className="flex gap-3 text-red-400 p-2 bg-red-500/5 rounded border-l-2 border-red-500">
-                                <span className="opacity-50">10:42:01</span>
-                                <span className="font-bold">[CRITICAL]</span>
-                                <span>M-Pesa Callback Timeout: Transaction ID 8X92...</span>
-                            </div>
-                            <div className="flex gap-3 text-amber-400 p-2 bg-amber-500/5 rounded border-l-2 border-amber-500">
-                                <span className="opacity-50">10:38:15</span>
-                                <span className="font-bold">[WARNING]</span>
-                                <span>High API Latency on /animals/endpoint (2.4s)</span>
-                            </div>
+                            {data?.recent_errors?.length > 0 ? (
+                                data.recent_errors.map((err) => (
+                                    <div 
+                                        key={err.id} 
+                                        className={`flex gap-3 p-2 rounded border-l-2 ${
+                                            err.level === 'CRITICAL' ? 'text-red-400 bg-red-500/5 border-red-500' :
+                                            err.level === 'ERROR' ? 'text-rose-400 bg-rose-500/5 border-rose-500' :
+                                            'text-amber-400 bg-amber-500/5 border-amber-500'
+                                        }`}
+                                    >
+                                        <span className="opacity-50 shrink-0">{err.timestamp}</span>
+                                        <span className="font-bold shrink-0">[{err.level}]</span>
+                                        <span className="truncate">{err.message}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-gray-500 text-center py-8 font-sans text-xs">
+                                    No system errors or alerts in the last 24 hours. Platform operating normally.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

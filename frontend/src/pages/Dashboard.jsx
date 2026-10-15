@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
@@ -34,6 +34,7 @@ import { useDailyMilkSummary, useMilkProductionStats } from '../hooks/useMilk';
 import { useFarmHealth } from '../hooks/useAI';
 import { useFinanceSummary } from '../hooks/useFinance';
 import { useSubscription } from '../hooks/useSubscription';
+import { useAlerts } from '../hooks/useAlerts';
 
 const formatLitres = (value) => `${Number(value || 0).toFixed(1)} L`;
 const formatMoney = (value) => `KES ${Number(value || 0).toLocaleString()}`;
@@ -79,11 +80,32 @@ const Dashboard = () => {
   const isDataLoggingOnly = subInfo?.is_data_logging_only;
   const isFrozen = subInfo?.status === 'Frozen';
 
-  const dairyAlerts = [
-    { title: 'Heat Cycle Watch', detail: 'Check cows with restlessness, mounting, or lower feed intake.', icon: HeartPulse, tone: 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-300' },
-    { title: 'Calf Vaccine', detail: 'Review calves due for clostridial or deworming schedule this week.', icon: Syringe, tone: 'text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-300' },
-    { title: 'Milk Price', detail: 'Post county buyer prices or compare today’s KES/L in Community.', icon: Tag, tone: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-300' },
-  ];
+  const { data: rawAlerts = [] } = useAlerts();
+
+  const alertsList = useMemo(() => {
+    if (!Array.isArray(rawAlerts) || !rawAlerts.length) return [];
+    return rawAlerts.slice(0, 4).map((alert) => {
+      let icon = AlertTriangle;
+      let tone = 'text-amber-700 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-300';
+      if (alert.alert_type === 'VACCINATION_DUE') {
+        icon = Syringe;
+        tone = 'text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-300';
+      } else if (alert.alert_type === 'AI_DISEASE_RISK') {
+        icon = HeartPulse;
+        tone = 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-300';
+      } else if (alert.alert_type === 'BREEDING_DUE') {
+        icon = HeartPulse;
+        tone = 'text-purple-700 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-300';
+      }
+      return {
+        id: alert.id,
+        title: alert.alert_type ? alert.alert_type.replace(/_/g, ' ') : 'Farm Alert',
+        detail: alert.message,
+        icon,
+        tone,
+      };
+    });
+  }, [rawAlerts]);
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
@@ -197,17 +219,23 @@ const Dashboard = () => {
               <AlertTriangle className="text-amber-600" size={26} />
             </div>
             <div className="space-y-3">
-              {dairyAlerts.map((alert) => (
-                <div key={alert.title} className="flex gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
-                  <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${alert.tone}`}>
-                    <alert.icon size={19} />
+              {alertsList.length > 0 ? (
+                alertsList.map((alert) => (
+                  <div key={alert.id || alert.title} className="flex gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
+                    <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${alert.tone}`}>
+                      <alert.icon size={19} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-slate-100 capitalize">{alert.title.toLowerCase()}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{alert.detail}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-900 dark:text-slate-100">{alert.title}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{alert.detail}</p>
-                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400">
+                  No urgent alerts for today. Your herd is on track!
                 </div>
-              ))}
+              )}
             </div>
           </div>
 

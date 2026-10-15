@@ -36,8 +36,7 @@ const VetVisits = () => {
 
     const createVisitMutation = useMutation({
         mutationFn: async (payload) => {
-            // Simulated or saved via visit endpoint
-            const res = await api.post('/vet/data/visits/', payload).catch(() => ({ data: payload }));
+            const res = await api.post('/vet/data/visits/', payload);
             return res.data;
         },
         onSuccess: () => {
@@ -46,7 +45,10 @@ const VetVisits = () => {
             setVisitForm({ farm: '', scheduled_date: '', visit_type: 'Routine', notes: '' });
             addToast('Visit scheduled successfully!', 'success');
         },
-        onError: () => addToast('Scheduled locally in session', 'success')
+        onError: (err) => {
+            const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to schedule farm visit.';
+            addToast(errorMsg, 'error');
+        }
     });
 
     const handleSchedule = (e) => {

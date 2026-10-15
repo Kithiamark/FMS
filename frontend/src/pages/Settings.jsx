@@ -157,7 +157,14 @@ const Settings = () => {
 
   if (isLoading) return <div className="p-8 text-gray-600 dark:text-slate-300">Loading settings...</div>;
   const currentPlan = subscriptionData?.current?.plan || user?.farm?.subscription?.plan || 'Trial';
-  const plans = subscriptionData?.plans || {};
+  const allPlans = subscriptionData?.plans || {};
+  const isAggregator = user?.role === 'AGGREGATOR';
+  const plans = Object.fromEntries(
+    Object.entries(allPlans).filter(([planKey]) => {
+      const isBuyer = planKey.startsWith('Buyer') || planKey.toLowerCase().includes('buyer');
+      return isAggregator ? isBuyer : !isBuyer;
+    })
+  );
 
   const handleOpenMpesaPayment = (plan) => {
     setSelectedPlanForPayment(plan);

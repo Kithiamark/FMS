@@ -18,7 +18,8 @@ from .serializers import (
 from farms.models import Farm
 from animals.models import Animal
 from vets.models import VetProfile
-from finance.models import Subscription
+from finance.models import Subscription, PaymentIntent
+from finance.serializers import PLAN_CATALOG
 from accounts.serializers import UserSerializer
 
 User = get_user_model()
@@ -30,6 +31,14 @@ class IsAdminUser(permissions.BasePermission):
             and request.user.is_authenticated
             and (request.user.is_staff or request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN')
         )
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return bool(request.user.is_staff or request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN')
 
 class AdminStatsView(APIView):
     permission_classes = [IsAdminUser]
@@ -45,13 +54,97 @@ class AdminStatsView(APIView):
             'trial': active_subs.filter(plan='Trial').count(),
             'premium': active_subs.filter(plan='Premium').count(),
             'enterprise': active_subs.filter(plan='Enterprise').count(),
+            'buyer_starter': active_subs.filter(plan='BuyerStarter').count(),
+            'buyer_commercial': active_subs.filter(plan='BuyerCommercial').count(),
         }
 
-        monthly_revenue = 0 
+        # Dynamic MRR calculation from active subscriptions
+        monthly_revenue = sum(
+            PLAN_CATALOG.get(sub.plan, {}).get('price_kes', 0)
+            for sub in active_subs
+        )
+
+        # Churn rate: ratio of expired/cancelled subscriptions to all-time subscriptions
+        total_subs = Subscription.objects.count()
+        expired_or_cancelled = Subscription.objects.filter(status__in=['Expired', 'Cancelled']).count()
+        churn_rate = round((expired_or_cancelled / total_subs) * 100, 1) if total_subs else 0.0
+
         errors_24h = SystemLog.objects.filter(
             level__in=['ERROR', 'CRITICAL'], 
-            timestamp__gte=timezone.now() - timezone.timedelta(hours=24)
+            timestamp__gte=timezone.now() - timedelta(hours=24)
         ).count()
+
+        # Recent signups (last 5 registered users)
+        recent_users = User.objects.order_by('-id')[:5]
+        recent_signups = []
+        for u in recent_users:
+            farm = get_user_farm(u)
+            sub = getattr(farm, 'subscription', None) if farm else None
+            plan_name = sub.plan if sub else ('Aggregator' if u.role == 'AGGREGATOR' else ('Vet' if u.role == 'VETERINARIAN' else 'Trial'))
+            date_str = u.created_at.strftime('%Y-%m-%d') if hasattr(u, 'created_at') and u.created_at else 'Today'
+            recent_signups.append({
+                'id': u.id,
+                'name': u.full_name,
+                'phone': str(u.phone_number),
+                'role': u.role,
+                'plan': plan_name,
+                'date': date_str,
+            })
+
+        # Recent system alerts / logs (last 5 errors/warnings)
+        recent_logs = SystemLog.objects.filter(
+            level__in=['ERROR', 'CRITICAL', 'WARNING']
+        ).order_by('-timestamp')[:5]
+        recent_errors = [
+            {
+                'id': log.id,
+                'level': log.level,
+                'message': log.message,
+                'service': log.service,
+                'timestamp': log.timestamp.strftime('%H:%M:%S'),
+            }
+            for log in recent_logs
+        ]
+
+        # 6-month revenue trend
+        now = timezone.now()
+        revenue_trend = []
+        month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        for i in range(5, -1, -1):
+            target_year = now.year
+            target_month = now.month - i
+            while target_month <= 0:
+                target_month += 12
+                target_year -= 1
+
+            month_label = month_names[target_month - 1]
+            
+            intents = PaymentIntent.objects.filter(
+                status__in=[PaymentIntent.Status.PAID, PaymentIntent.Status.TEST_APPROVED],
+                created_at__year=target_year,
+                created_at__month=target_month
+            )
+            
+            basic_rev = intents.filter(plan='Basic').aggregate(total=Sum('amount_kes'))['total'] or 0
+            premium_rev = intents.filter(plan='Premium').aggregate(total=Sum('amount_kes'))['total'] or 0
+            enterprise_rev = intents.filter(plan__in=['Enterprise', 'BuyerStarter', 'BuyerCommercial']).aggregate(total=Sum('amount_kes'))['total'] or 0
+
+            # If current month has 0 recorded intents yet, reflect current active subscription run-rate
+            if i == 0 and (basic_rev + premium_rev + enterprise_rev == 0):
+                basic_rev = sub_counts['basic'] * PLAN_CATALOG.get('Basic', {}).get('price_kes', 0)
+                premium_rev = sub_counts['premium'] * PLAN_CATALOG.get('Premium', {}).get('price_kes', 0)
+                enterprise_rev = (
+                    sub_counts['enterprise'] * PLAN_CATALOG.get('Enterprise', {}).get('price_kes', 0)
+                    + sub_counts['buyer_starter'] * PLAN_CATALOG.get('BuyerStarter', {}).get('price_kes', 0)
+                    + sub_counts['buyer_commercial'] * PLAN_CATALOG.get('BuyerCommercial', {}).get('price_kes', 0)
+                )
+
+            revenue_trend.append({
+                'name': month_label,
+                'basic': basic_rev,
+                'premium': premium_rev,
+                'enterprise': enterprise_rev,
+            })
 
         data = {
             'total_farmers': total_farmers,
@@ -59,7 +152,11 @@ class AdminStatsView(APIView):
             'total_animals': total_animals,
             'active_subscriptions': sub_counts,
             'monthly_revenue_kes': monthly_revenue,
+            'churn_rate': churn_rate,
             'system_errors_24h': errors_24h,
+            'recent_signups': recent_signups,
+            'recent_errors': recent_errors,
+            'revenue_trend': revenue_trend,
         }
         return Response(data)
 
@@ -408,9 +505,17 @@ class AdminSubscriptionViewSet(viewsets.ModelViewSet):
         return Response(AdminSubscriptionSerializer(sub).data)
 
 class AnnouncementViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrReadOnly]
     serializer_class = AnnouncementSerializer
-    queryset = Announcement.objects.all().order_by('-created_at')
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Announcement.objects.none()
+        is_admin = user.is_staff or user.is_superuser or getattr(user, 'role', '') == 'ADMIN'
+        if is_admin:
+            return Announcement.objects.all().order_by('-created_at')
+        return Announcement.objects.filter(is_published=True).order_by('-created_at')
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

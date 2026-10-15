@@ -8,7 +8,8 @@ from django.conf import settings
 from datetime import timedelta
 from .models import Expense, Income, PaymentIntent, Subscription
 from .serializers import ExpenseSerializer, IncomeSerializer, PaymentIntentSerializer, PLAN_CATALOG, SubscriptionSerializer
-from accounts.permissions import IsFarmer, IsAdmin
+from accounts.permissions import IsFarmer, IsAdmin, IsAggregator
+from farms.models import Farm
 from core.models import AuditLog
 from core.utils import get_user_farm
 
@@ -74,10 +75,23 @@ class IncomeViewSet(viewsets.ModelViewSet):
 
 
 class SubscriptionViewSet(viewsets.ViewSet):
-    permission_classes = [IsAuthenticated, IsFarmer | IsAdmin]
+    permission_classes = [IsAuthenticated, IsFarmer | IsAdmin | IsAggregator]
 
     def _farm(self):
-        return get_user_farm(self.request.user)
+        farm = get_user_farm(self.request.user)
+        if not farm:
+            user_role = getattr(self.request.user, 'role', '')
+            if user_role == 'AGGREGATOR':
+                farm, _ = Farm.objects.get_or_create(
+                    owner=self.request.user,
+                    defaults={'name': f"{self.request.user.full_name}'s Collection Hub"}
+                )
+            elif user_role == 'ADMIN' or self.request.user.is_staff or self.request.user.is_superuser:
+                farm, _ = Farm.objects.get_or_create(
+                    owner=self.request.user,
+                    defaults={'name': f"{self.request.user.full_name}'s Admin Farm"}
+                )
+        return farm
 
     def _ensure_subscription(self):
         farm = self._farm()
@@ -106,9 +120,22 @@ class SubscriptionViewSet(viewsets.ViewSet):
 
     def list(self, request):
         subscription = self._ensure_subscription()
+        user_role = getattr(request.user, 'role', '')
+        is_admin = user_role == 'ADMIN' or request.user.is_staff or request.user.is_superuser
+        is_buyer = user_role == 'AGGREGATOR'
+        buyer_plans = [Subscription.Plan.BUYER_STARTER, Subscription.Plan.BUYER_COMMERCIAL]
+
+        if is_admin:
+            filtered_catalog = PLAN_CATALOG
+        elif is_buyer:
+            filtered_catalog = {k: v for k, v in PLAN_CATALOG.items() if k in buyer_plans}
+        else:
+            # Regular farmers & farm workers: hide all buyer plans
+            filtered_catalog = {k: v for k, v in PLAN_CATALOG.items() if k not in buyer_plans}
+
         return Response({
             'current': SubscriptionSerializer(subscription).data,
-            'plans': PLAN_CATALOG,
+            'plans': filtered_catalog,
             'test_mode': not all([
                 getattr(settings, 'MPESA_CONSUMER_KEY', ''),
                 getattr(settings, 'MPESA_CONSUMER_SECRET', ''),
@@ -129,8 +156,19 @@ class SubscriptionViewSet(viewsets.ViewSet):
         if plan not in PLAN_CATALOG or plan == Subscription.Plan.TRIAL:
             return Response({'error': 'Please select a valid tier.'}, status=400)
 
+        # Enforce role plan eligibility
+        user_role = getattr(request.user, 'role', '')
+        is_admin = user_role == 'ADMIN' or request.user.is_staff or request.user.is_superuser
+        is_buyer = user_role == 'AGGREGATOR'
+        buyer_plans = [Subscription.Plan.BUYER_STARTER, Subscription.Plan.BUYER_COMMERCIAL]
+
+        if not is_admin:
+            if is_buyer and plan not in buyer_plans:
+                return Response({'error': 'Selected plan is not valid for aggregator accounts.'}, status=400)
+            if not is_buyer and plan in buyer_plans:
+                return Response({'error': 'Milk buyer plans are only available for aggregator accounts.'}, status=400)
+
         # If user is admin or explicitly in test mode with no receipt
-        is_admin = getattr(request.user, 'role', '') == 'ADMIN' or request.user.is_staff
         is_test = mode == 'test' and is_admin
 
         if is_test:

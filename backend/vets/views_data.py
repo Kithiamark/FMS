@@ -227,11 +227,51 @@ class VetDataViewSet(VetFarmAccessMixin, BaseViewSet):
         }
         return Response(data)
 
-    @action(detail=False, methods=['get'], url_path='visits')
+    @action(detail=False, methods=['get', 'post'], url_path='visits')
     def all_visits(self, request):
         vet = self.get_vet_profile()
+        if request.method == 'POST':
+            farm_identifier = request.data.get('farm')
+            scheduled_date = request.data.get('scheduled_date')
+            visit_type = request.data.get('visit_type', 'Routine')
+            notes = request.data.get('notes', '')
+
+            if not farm_identifier:
+                return Response({'error': 'Target farm is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            if not scheduled_date:
+                return Response({'error': 'Scheduled date & time is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            farm = None
+            if str(farm_identifier).isdigit():
+                farm = Farm.objects.filter(id=int(farm_identifier)).first()
+            if not farm:
+                farm = Farm.objects.filter(name=farm_identifier).first()
+            if not farm:
+                return Response({'error': f"Target farm '{farm_identifier}' not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            from django.utils.dateparse import parse_datetime
+            parsed_date = parse_datetime(str(scheduled_date)) if isinstance(scheduled_date, str) else scheduled_date
+            if not parsed_date:
+                return Response({'error': 'Invalid date & time format for scheduled visit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            visit = VetVisit.objects.create(
+                vet=vet,
+                farm=farm,
+                scheduled_date=parsed_date,
+                visit_type=visit_type,
+                notes=notes,
+                status=VetVisit.Status.SCHEDULED
+            )
+            return Response({
+                'id': visit.id,
+                'farm': visit.farm.name,
+                'date': visit.scheduled_date,
+                'type': visit.visit_type,
+                'status': visit.status,
+                'notes': visit.notes,
+            }, status=status.HTTP_201_CREATED)
+
         visits = VetVisit.objects.filter(vet=vet).select_related('farm').order_by('-scheduled_date')
-        
         data = [{'id': v.id, 'farm': v.farm.name, 'date': v.scheduled_date, 'type': v.visit_type, 'status': v.status, 'notes': v.notes} for v in visits]
         return Response(data)
 
