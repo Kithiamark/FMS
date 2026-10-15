@@ -16,7 +16,7 @@ const useChatWebSocket = (conversationId, onMessageReceived) => {
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         let host = window.location.port === '5173' ? 'localhost:8001' : window.location.host;
-        const apiBase = import.meta.env.VITE_API_BASE_URL;
+        const apiBase = import.meta.env.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'https://fms-gf57.onrender.com/api/v1';
         if (import.meta.env.VITE_WS_BASE_URL) {
             host = import.meta.env.VITE_WS_BASE_URL.replace(/^wss?:\/\//, '');
         } else if (apiBase && apiBase.startsWith('http')) {
