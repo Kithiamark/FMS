@@ -19,37 +19,49 @@ class RegisterView(generics.CreateAPIView):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            access_token = response.data.get('access')
-            refresh_token = response.data.get('refresh')
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-            # Set cookies
-            response.set_cookie(
-                'access_token',
-                access_token,
-                httponly=True,
-                max_age=3600, # 1 hour
-                samesite='Lax'
+        user = getattr(serializer, 'user', None)
+        user_data = UserSerializer(user).data if user else None
+
+        response_data = dict(serializer.validated_data)
+        if user_data:
+            response_data['user'] = user_data
+
+        response = Response(response_data, status=status.HTTP_200_OK)
+        access_token = response_data.get('access')
+        refresh_token = response_data.get('refresh')
+
+        # Set cookies
+        response.set_cookie(
+            'access_token',
+            access_token,
+            httponly=True,
+            max_age=3600, # 1 hour
+            samesite='Lax'
+        )
+        response.set_cookie(
+            'refresh_token',
+            refresh_token,
+            httponly=True,
+            max_age=86400, # 1 day
+            samesite='Lax'
+        )
+
+        if user:
+            farm = None
+            if getattr(user, 'role', None) != User.Role.ADMIN:
+                farm = get_user_farm(user)
+            AuditLog.objects.create(
+                user=user,
+                farm=farm,
+                event_type=AuditLog.EventType.AUTH,
+                action='LOGIN',
+                model_name='User',
+                object_id=str(user.id),
+                metadata={'phone_verified': user.phone_verified},
             )
-            response.set_cookie(
-                'refresh_token',
-                refresh_token,
-                httponly=True,
-                max_age=86400, # 1 day
-                samesite='Lax'
-            )
-            user = User.objects.filter(phone_number=request.data.get('phone_number')).first()
-            if user:
-                AuditLog.objects.create(
-                    user=user,
-                    farm=get_user_farm(user),
-                    event_type=AuditLog.EventType.AUTH,
-                    action='LOGIN',
-                    model_name='User',
-                    object_id=str(user.id),
-                    metadata={'phone_verified': user.phone_verified},
-                )
         return response
 
 class CustomTokenRefreshView(TokenRefreshView):

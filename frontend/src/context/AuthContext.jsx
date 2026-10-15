@@ -33,8 +33,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('access_token', data.access);
         localStorage.setItem('refresh_token', data.refresh);
         setAuthToken(data.access);
-        // Fetch the full user object after login because route guards and layouts need
-        // role and farm data, not just a token pair.
+        if (data.user) {
+            setUser(data.user);
+            return data.user;
+        }
         return await refreshUser();
     };
 
