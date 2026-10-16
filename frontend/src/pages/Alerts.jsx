@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { CustomDatePicker } from '../components/ui/CustomDatePicker';
 
 const alertTypes = [
   ['VACCINATION_DUE', 'Vaccination Due'],
@@ -144,10 +145,15 @@ const Alerts = () => {
                 {animals.map(animal => <option key={animal.id} value={animal.id}>{animal.name} ({animal.ear_tag})</option>)}
               </select>
             </label>
-            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
-              Date and Time
-              <input required type="datetime-local" value={form.scheduled_at} onChange={event => setForm({ ...form, scheduled_at: event.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" />
-            </label>
+            <div>
+              <CustomDatePicker
+                label="Date and Time"
+                value={form.scheduled_at}
+                onChange={(newDateTime) => setForm(prev => ({ ...prev, scheduled_at: newDateTime }))}
+                includeTime={true}
+                placeholder="Select date and time"
+              />
+            </div>
             <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
               Channel
               <select value={form.channel} onChange={event => setForm({ ...form, channel: event.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">

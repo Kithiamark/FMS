@@ -1,10 +1,12 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCreateAnimal } from '../hooks/useAnimals';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import Input from './Input';
+import { CustomDatePicker } from './ui/CustomDatePicker';
+import { useToast } from './ui/Toast';
 
 const schema = z.object({
     name: z.string().min(1, "Name is required").trim(),
@@ -18,31 +20,62 @@ const schema = z.object({
 
 const AddAnimalModal = ({ onClose }) => {
     const { mutate, isPending } = useCreateAnimal();
-    const { register, handleSubmit, formState: { errors } } = useForm({
+    const { addToast } = useToast();
+    const [serverError, setServerError] = useState('');
+    const { register, handleSubmit, control, setError, formState: { errors } } = useForm({
         resolver: zodResolver(schema),
         defaultValues: {
             health_status: 'Healthy',
-            sex: 'Cow'
+            sex: 'Cow',
+            date_of_birth: new Date().toISOString().split('T')[0]
         }
     });
 
     const onSubmit = (data) => {
+        setServerError('');
         mutate(data, {
             onSuccess: () => {
+                addToast('Animal registered successfully.', 'success');
                 onClose();
+            },
+            onError: (err) => {
+                const data = err.response?.data;
+                let summary = 'Could not save animal record.';
+                if (data) {
+                    if (typeof data === 'object') {
+                        Object.keys(data).forEach(field => {
+                            const msgs = Array.isArray(data[field]) ? data[field] : [data[field]];
+                            if (['name', 'ear_tag', 'breed', 'sex', 'date_of_birth', 'weight_kg', 'health_status'].includes(field)) {
+                                setError(field, { type: 'server', message: msgs.join(' ') });
+                            }
+                        });
+                        summary = data.detail || data.ear_tag?.[0] || data.error || Object.values(data).flat().join(' ');
+                    } else if (typeof data === 'string') {
+                        summary = data;
+                    }
+                }
+                setServerError(summary);
+                addToast(summary, 'error');
             }
         });
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center p-6 border-b">
-                    <h2 className="text-2xl font-bold text-forest-green">Add New Animal</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-                        <X size={24} />
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-100">
+                <div className="flex justify-between items-center p-6 border-b border-gray-100">
+                    <h2 className="text-2xl font-bold font-heading text-forest-green">Add New Animal</h2>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition">
+                        <X size={20} />
                     </button>
                 </div>
+                
+                {serverError && (
+                    <div className="mx-6 mt-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2.5">
+                        <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-600" />
+                        <span className="leading-snug font-medium">{serverError}</span>
+                    </div>
+                )}
                 
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -74,7 +107,23 @@ const AddAnimalModal = ({ onClose }) => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <Input label="Date of Birth" type="date" {...register('date_of_birth')} error={errors.date_of_birth} />
+                        <div>
+                            <Controller
+                                control={control}
+                                name="date_of_birth"
+                                render={({ field }) => (
+                                    <CustomDatePicker
+                                        label="Date of Birth"
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Select birth date"
+                                    />
+                                )}
+                            />
+                            {errors.date_of_birth && (
+                                <p className="text-red-500 text-sm mt-1">{errors.date_of_birth.message}</p>
+                            )}
+                        </div>
                         <Input label="Weight (kg)" type="number" step="0.01" {...register('weight_kg')} error={errors.weight_kg} />
                     </div>
 

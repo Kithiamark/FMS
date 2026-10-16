@@ -3,11 +3,17 @@ import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import { Bell, ChevronDown, Menu, Moon, Search, Sun } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useAlerts } from '../../hooks/useAlerts';
+import { NotificationModal } from '../ui/NotificationModal';
 
 const MainLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('arvion-theme') === 'dark');
   const { user } = useAuth();
+  const { data: alerts = [] } = useAlerts();
+  const unreadCount = alerts.filter(a => !a.read).length;
+
   const initials = useMemo(() => {
     const names = user?.full_name?.trim().split(/\s+/) || [];
     return (names[0]?.[0] || 'F') + (names[1]?.[0] || '');
@@ -50,10 +56,23 @@ const MainLayout = ({ children }) => {
             <button type="button" onClick={() => setDarkMode(!darkMode)} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200" aria-label="Toggle dark mode">
               {darkMode ? <Sun size={19} /> : <Moon size={19} />}
             </button>
-            <button type="button" className="relative rounded-xl border border-slate-200 bg-white p-2 text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+            <button 
+              type="button" 
+              onClick={() => setNotificationOpen(!notificationOpen)}
+              className="relative rounded-xl border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+              aria-label="Open notifications"
+            >
               <Bell size={19} />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-500" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white shadow">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
+            <NotificationModal 
+              isOpen={notificationOpen} 
+              onClose={() => setNotificationOpen(false)} 
+            />
             <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-sm font-bold text-white">
                 {initials}

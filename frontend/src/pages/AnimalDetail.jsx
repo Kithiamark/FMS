@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAnimal, useDeleteAnimal } from '../hooks/useAnimals';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Download, Trash2, Edit } from 'lucide-react';
+import { AnimalEditModal } from '../components/AnimalEditModal';
 
 const AnimalDetail = () => {
     const { id } = useParams();
@@ -11,6 +12,7 @@ const AnimalDetail = () => {
     const { data: animal, isLoading } = useAnimal(id);
     const { mutate: deleteAnimal } = useDeleteAnimal();
     const [activeTab, setActiveTab] = useState('overview');
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     
     if (isLoading) return <div className="p-8">Loading...</div>;
     if (!animal) return <div className="p-8">Animal not found</div>;
@@ -45,7 +47,13 @@ const AnimalDetail = () => {
                                 <p className="text-gray-600">Breed: {animal.breed}</p>
                             </div>
                             <div className="flex gap-2">
-                                <button className="p-2 text-blue-600 hover:bg-blue-50 rounded"><Edit size={20} /></button>
+                                <button 
+                                    onClick={() => setIsEditModalOpen(true)}
+                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded transition" 
+                                    title="Edit animal (Requires OTP)"
+                                >
+                                    <Edit size={20} />
+                                </button>
                                 {user?.role !== 'FARM_WORKER' && (
                                     <button onClick={handleDelete} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Archive animal">
                                         <Trash2 size={20} />
@@ -161,6 +169,12 @@ const AnimalDetail = () => {
                     )}
                 </div>
             </div>
+
+            <AnimalEditModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                animal={animal}
+            />
         </div>
     );
 };

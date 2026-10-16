@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { ArrowDownRight, ArrowUpRight, Plus, WalletCards } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
+import { CustomDatePicker } from '../components/ui/CustomDatePicker';
 
 const formatMoney = (value) => `KES ${Number(value || 0).toLocaleString()}`;
 
@@ -140,7 +141,15 @@ const Finance = () => {
           </div>
           <div className="space-y-4">
             <input required type="number" min="1" placeholder="Amount (KES)" value={form.amount_kes} onChange={event => setForm({ ...form, amount_kes: event.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500" />
-            <input required type="date" value={form.date} onChange={event => setForm({ ...form, date: event.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" />
+            <CustomDatePicker
+              label="Transaction Date"
+              value={form.date}
+              onChange={(newDate) => {
+                const dateStr = newDate.includes('T') ? newDate.split('T')[0] : newDate;
+                setForm(prev => ({ ...prev, date: dateStr }));
+              }}
+              placeholder="Select date"
+            />
             {entryType === 'income' ? (
               <select value={form.source} onChange={event => setForm({ ...form, source: event.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
                 <option value="MilkSale">Milk Sale</option>

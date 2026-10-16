@@ -23,6 +23,8 @@ const OTPVerification = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [indemnityAgreed, setIndemnityAgreed] = useState(false);
     
+    const isReset = Boolean(location.state?.is_reset);
+
     const [step, setStep] = useState(1); // 1: Verify OTP, 2: Set Password & Accept Indemnity
     const [timer, setTimer] = useState(60);
     const [errorMsg, setErrorMsg] = useState('');
@@ -156,10 +158,10 @@ const OTPVerification = () => {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold font-heading text-slate-900 tracking-tight">
-                                {step === 1 ? t('otp_verify') : 'Set Account Password'}
+                                {step === 1 ? (isReset ? 'Reset Password' : t('otp_verify')) : (isReset ? 'Set New Password' : 'Set Account Password')}
                             </h2>
                             <p className="text-xs text-slate-500 font-medium">
-                                {step === 1 ? 'Step 1 of 2: Phone Verification' : 'Step 2 of 2: Security & Terms'}
+                                {step === 1 ? (isReset ? 'Step 1 of 2: Confirm Mobile Number' : 'Step 1 of 2: Phone Verification') : 'Step 2 of 2: Security & Terms'}
                             </p>
                         </div>
                     </div>

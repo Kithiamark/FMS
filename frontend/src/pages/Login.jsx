@@ -19,9 +19,17 @@ const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
     const [serverError, setServerError] = useState('');
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm({
         resolver: zodResolver(schema)
     });
+
+    const currentPhone = watch('phone_number');
+
+    const handleForgotPassword = (e) => {
+        e.preventDefault();
+        const normalized = currentPhone ? normalizeKenyanPhone(currentPhone) : '';
+        navigate('/otp', { state: { phone_number: normalized, is_reset: true } });
+    };
 
     const onSubmit = async (data) => {
         setServerError('');
@@ -128,13 +136,24 @@ const Login = () => {
                                 {...register('phone_number')} 
                                 error={errors.phone_number} 
                             />
-                            <Input 
-                                label={t('password')} 
-                                type="password" 
-                                placeholder="••••••••"
-                                {...register('password')} 
-                                error={errors.password} 
-                            />
+                            <div>
+                                <Input 
+                                    label={t('password')} 
+                                    type="password" 
+                                    placeholder="••••••••"
+                                    {...register('password')} 
+                                    error={errors.password} 
+                                />
+                                <div className="mt-1 flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={handleForgotPassword}
+                                        className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:underline transition-colors"
+                                    >
+                                        Forgot Password?
+                                    </button>
+                                </div>
+                            </div>
                             <button 
                                 type="submit" 
                                 disabled={isSubmitting}

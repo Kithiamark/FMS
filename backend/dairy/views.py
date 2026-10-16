@@ -1,5 +1,5 @@
 from core.utils import get_user_farm
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, exceptions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -30,31 +30,68 @@ class MilkRecordViewSet(viewsets.ModelViewSet):
              raise PermissionError("Cannot add record for animal not in your farm")
         serializer.save(recorded_by=self.request.user)
 
+    def perform_update(self, serializer):
+        if self.request.user.role == 'FARM_WORKER':
+            raise exceptions.PermissionDenied("Farm workers cannot modify existing milk records. Contact the farm owner.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.role == 'FARM_WORKER':
+            raise exceptions.PermissionDenied("Farm workers cannot delete milk records.")
+        instance.delete()
+
     @action(detail=False, methods=['post'], url_path='bulk')
     def bulk(self, request):
         # DailyMilkEntry sends all rows for a date together. update_or_create makes
-        # repeated saves idempotent for the same animal/date pair.
+        # repeated saves idempotent for the same animal/date pair for Farm Owners.
+        # For FARM_WORKER users, records are immutable once logged and cannot be backdated.
         records = request.data if isinstance(request.data, list) else request.data.get('records', [])
         if not records:
             return Response({'error': 'No milk records supplied.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        user_farm = get_user_farm(request.user)
+        is_worker = request.user.role == 'FARM_WORKER'
+        today = timezone.now().date()
+
         saved = []
         errors = []
         for index, payload in enumerate(records):
-            serializer = self.get_serializer(data=payload)
+            animal_id = payload.get('animal')
+            record_date = payload.get('date')
+
+            # Pre-lookup existing instance for idempotency / update validation
+            existing = None
+            if animal_id and record_date:
+                existing = MilkRecord.objects.filter(animal_id=animal_id, date=record_date).first()
+
+            # Worker immutability and anti-backdating safeguards
+            if is_worker:
+                if record_date and str(record_date) < str(today):
+                    errors.append({'index': index, 'errors': {'date': ['Farm workers cannot backdate milk records.']}})
+                    continue
+                if existing:
+                    errors.append({
+                        'index': index,
+                        'errors': {'animal': [f"Milk records for this animal on {record_date} already exist and cannot be edited by workers."]}
+                    })
+                    continue
+
+            serializer = self.get_serializer(instance=existing, data=payload, partial=True)
             if not serializer.is_valid():
                 errors.append({'index': index, 'errors': serializer.errors})
                 continue
 
-            animal = serializer.validated_data['animal']
-            if request.user.role != 'ADMIN' and animal.farm != request.user.farm:
+            animal = serializer.validated_data.get('animal') or (existing.animal if existing else None)
+            if request.user.role != 'ADMIN' and animal and animal.farm != user_farm:
                 errors.append({'index': index, 'errors': {'animal': ['Animal does not belong to your farm.']}})
                 continue
+
+            record_date = serializer.validated_data.get('date') or (existing.date if existing else None)
 
             try:
                 instance, _ = MilkRecord.objects.update_or_create(
                     animal=animal,
-                    date=serializer.validated_data['date'],
+                    date=record_date,
                     defaults={
                         'morning_yield': serializer.validated_data.get('morning_yield', 0),
                         'evening_yield': serializer.validated_data.get('evening_yield', 0),
