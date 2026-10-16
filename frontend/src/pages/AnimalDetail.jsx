@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAnimal, useDeleteAnimal } from '../hooks/useAnimals';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Download, Trash2, Edit } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, PenLine } from 'lucide-react';
 import { AnimalEditModal } from '../components/AnimalEditModal';
 
 const AnimalDetail = () => {
@@ -49,10 +49,10 @@ const AnimalDetail = () => {
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded transition" 
+                                    className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg border border-emerald-200/80 transition shadow-sm" 
                                     title="Edit animal (Requires OTP)"
                                 >
-                                    <Edit size={20} />
+                                    <PenLine size={20} />
                                 </button>
                                 {user?.role !== 'FARM_WORKER' && (
                                     <button onClick={handleDelete} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Archive animal">
