@@ -129,25 +129,49 @@ export const CalendarModal = ({
           </button>
         </div>
 
-        {/* Month Navigation */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <div className="flex items-center gap-1">
-            <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              {MONTH_NAMES[currentMonth]} {currentYear}
-            </h4>
+        {/* Month & Year Navigation */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-2 gap-2">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            {/* Month Picker */}
+            <select
+              value={currentMonth}
+              onChange={(e) => setCurrentMonth(Number(e.target.value))}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 cursor-pointer"
+            >
+              {MONTH_NAMES.map((name, index) => (
+                <option key={name} value={index}>
+                  {name}
+                </option>
+              ))}
+            </select>
+
+            {/* Year Picker */}
+            <select
+              value={currentYear}
+              onChange={(e) => setCurrentYear(Number(e.target.value))}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 cursor-pointer"
+            >
+              {Array.from({ length: 30 }, (_, i) => today.getFullYear() - 15 + i).map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+
             <button 
               type="button"
               onClick={jumpToToday} 
-              className="ml-2 rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300"
+              className="rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition shrink-0"
+              title="Jump to today"
             >
               Today
             </button>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <button 
               type="button"
               onClick={prevMonth} 
-              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               title="Previous month"
             >
               <ChevronLeft size={18} />
@@ -155,7 +179,7 @@ export const CalendarModal = ({
             <button 
               type="button"
               onClick={nextMonth} 
-              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               title="Next month"
             >
               <ChevronRight size={18} />

@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
 from farms.models import Farm, WorkerTask
+from finance.models import Subscription
 from core.models import AuditLog
 
 User = get_user_model()
@@ -22,6 +23,11 @@ class TestFarmViewSet:
             name="Alice's Farm",
             county="Kiambu",
             sub_county="Thika"
+        )
+        self.subscription = Subscription.objects.create(
+            farm=self.farm,
+            plan=Subscription.Plan.ENTERPRISE,
+            status=Subscription.Status.ACTIVE
         )
         self.worker = User.objects.create_user(
             phone_number='+254722222222',
@@ -206,5 +212,29 @@ class TestFarmViewSet:
         response = self.client.delete(f'/api/v1/tasks/{task.id}/')
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert WorkerTask.objects.filter(id=task.id).exists()
+
+    def test_task_creation_restricted_to_enterprise_plan(self):
+        """Task creation fails for Basic/Premium plans and succeeds for Enterprise."""
+        # Non-enterprise plan
+        self.subscription.plan = Subscription.Plan.BASIC
+        self.subscription.save()
+
+        self.client.force_authenticate(user=self.farmer)
+        payload = {
+            'title': 'Vaccination schedule',
+            'assigned_to': self.worker.id
+        }
+        forbidden_response = self.client.post('/api/v1/tasks/', payload)
+        assert forbidden_response.status_code == status.HTTP_403_FORBIDDEN
+        assert "Enterprise plan" in forbidden_response.data.get('detail', '')
+
+        # Switch to Enterprise plan
+        self.subscription.plan = Subscription.Plan.ENTERPRISE
+        self.subscription.save()
+
+        success_response = self.client.post('/api/v1/tasks/', payload)
+        assert success_response.status_code == status.HTTP_201_CREATED
+        assert WorkerTask.objects.filter(title='Vaccination schedule').exists()
+
 
 

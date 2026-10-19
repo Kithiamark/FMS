@@ -1,15 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
-import { Bell, ChevronDown, Menu, Moon, Search, Sun } from 'lucide-react';
+import { Bell, ChevronDown, Menu, Moon, Search, Sun, WifiOff, CloudUpload, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAlerts } from '../../hooks/useAlerts';
 import { NotificationModal } from '../ui/NotificationModal';
+import { getOfflineQueue, syncOfflineQueue } from '../../utils/offlineQueue';
 
 const MainLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('arvion-theme') === 'dark');
+  const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [queuedCount, setQueuedCount] = useState(() => getOfflineQueue().length);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
   const { user } = useAuth();
   const { data: alerts = [] } = useAlerts();
   const unreadCount = alerts.filter(a => !a.read).length;
@@ -23,6 +28,39 @@ const MainLayout = ({ children }) => {
     document.documentElement.classList.toggle('dark', darkMode);
     localStorage.setItem('arvion-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
+
+  React.useEffect(() => {
+    const handleOnline = async () => {
+      setIsOnline(true);
+      const queue = getOfflineQueue();
+      if (queue.length > 0) {
+        setIsSyncing(true);
+        setSyncMessage(`Reconnected! Syncing ${queue.length} offline records...`);
+        const result = await syncOfflineQueue();
+        setIsSyncing(false);
+        setSyncMessage(`Synced ${result.synced} offline items.`);
+        setTimeout(() => setSyncMessage(''), 4000);
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    const handleQueueChange = (e) => {
+      setQueuedCount(e.detail?.count ?? getOfflineQueue().length);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('fms:offline-queue-changed', handleQueueChange);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('fms:offline-queue-changed', handleQueueChange);
+    };
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f4f7f3] text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -85,6 +123,34 @@ const MainLayout = ({ children }) => {
             </div>
           </div>
         </header>
+
+        {/* Offline Status & Sync Banners */}
+        {!isOnline && (
+          <div className="bg-amber-600 px-4 py-2 text-white shadow-sm flex items-center justify-between text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <WifiOff size={16} className="animate-pulse shrink-0" />
+              <span>
+                <strong>Offline Mode Active:</strong> You can continue logging milk records and animal updates. Changes will be saved locally and synced once reconnected.
+              </span>
+            </div>
+            {queuedCount > 0 && (
+              <span className="ml-2 rounded-full bg-amber-800 px-2.5 py-0.5 text-xs font-bold shrink-0">
+                {queuedCount} queued
+              </span>
+            )}
+          </div>
+        )}
+
+        {syncMessage && (
+          <div className="bg-emerald-700 px-4 py-2 text-white shadow-sm flex items-center gap-2 text-xs sm:text-sm">
+            {isSyncing ? (
+              <CloudUpload size={16} className="animate-bounce shrink-0" />
+            ) : (
+              <CheckCircle2 size={16} className="shrink-0" />
+            )}
+            <span>{syncMessage}</span>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto px-4 py-5 pb-24 md:px-8 md:py-7 md:pb-8">
             {children}

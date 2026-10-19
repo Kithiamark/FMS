@@ -113,6 +113,12 @@ class WorkerTaskViewSet(viewsets.ModelViewSet):
         if not farm:
             raise exceptions.ValidationError({'detail': 'No active farm associated with this user.'})
 
+        from finance.models import Subscription
+        sub = Subscription.objects.filter(farm=farm, status=Subscription.Status.ACTIVE).first()
+        is_admin = user.role == 'ADMIN' or user.is_staff or user.is_superuser
+        if not is_admin and (not sub or sub.plan != Subscription.Plan.ENTERPRISE):
+            raise exceptions.PermissionDenied("Worker task assignments are only available on the Enterprise plan. Please upgrade your subscription.")
+
         assigned_to = serializer.validated_data.get('assigned_to')
         if assigned_to and (getattr(assigned_to, 'assigned_farm_id', None) != farm.id or getattr(assigned_to, 'role', '') != 'FARM_WORKER'):
             raise exceptions.ValidationError({'assigned_to': 'The assigned user must be a registered worker of this farm.'})

@@ -6,7 +6,9 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { CustomDatePicker } from '../components/ui/CustomDatePicker';
-import { ArrowLeft, Save, AlertTriangle, CheckCircle, Info, X, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Save, AlertTriangle, CheckCircle, Info, X, ShieldAlert, PenLine, Sunrise, Sun, PieChart, Milk } from 'lucide-react';
+import { VerifyOTPModal } from '../components/ui/VerifyOTPModal';
+import { enqueueOfflineMutation } from '../utils/offlineQueue';
 
 const numberValue = (value) => Number.parseFloat(value) || 0;
 
@@ -14,8 +16,12 @@ const DailyMilkEntry = () => {
     const { user } = useAuth();
     const isWorker = user?.role === 'FARM_WORKER';
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [activeTab, setActiveTab] = useState('yields'); // 'yields' (morning & evening) or 'allocations' (usage & sales)
     const [entries, setEntries] = useState({});
     const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [recordToEdit, setRecordToEdit] = useState(null);
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [editingAnimalId, setEditingAnimalId] = useState(null);
     const { addToast } = useToast();
     const { data: animals = [], isLoading: animalsLoading } = useAnimals({ sex: 'Cow' });
     const { data: summary, isLoading: summaryLoading } = useDailyMilkSummary(date);
@@ -121,6 +127,20 @@ const DailyMilkEntry = () => {
                 notes: entry.notes || '',
             }));
 
+        // If currently offline, queue locally and notify
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            enqueueOfflineMutation({
+                endpoint: '/milk/bulk/',
+                method: 'POST',
+                data: { records: recordsToSave },
+                description: `Milk records for ${date} (${recordsToSave.length} cows)`
+            });
+            setEntries({});
+            setShowPreviewModal(false);
+            addToast('Offline: Milk records saved locally. They will automatically sync when network returns.', 'success');
+            return;
+        }
+
         bulkSave(recordsToSave, {
             onSuccess: () => {
                 setEntries({});
@@ -128,6 +148,19 @@ const DailyMilkEntry = () => {
                 addToast('Milk records saved successfully.', 'success');
             },
             onError: (err) => {
+                // If network failure occurred (no response / server down), queue offline
+                if (!err.response) {
+                    enqueueOfflineMutation({
+                        endpoint: '/milk/bulk/',
+                        method: 'POST',
+                        data: { records: recordsToSave },
+                        description: `Milk records for ${date} (${recordsToSave.length} cows)`
+                    });
+                    setEntries({});
+                    setShowPreviewModal(false);
+                    addToast('Network unavailable: Milk records saved locally in offline queue.', 'success');
+                    return;
+                }
                 const apiError = err.response?.data?.errors?.[0]?.errors;
                 const errDetail = apiError ? Object.values(apiError).flat().join(' ') : (err.response?.data?.error || 'Could not save milk records.');
                 addToast(errDetail, 'error');
@@ -213,84 +246,268 @@ const DailyMilkEntry = () => {
                 ))}
             </section>
 
-            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                <div className="border-b border-gray-100 px-5 py-4">
-                    <h2 className="font-heading text-lg font-bold text-gray-900">Entry Table</h2>
+            {/* Tab Switcher for Yields vs Allocations */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-200 pb-2">
+                <div className="inline-flex rounded-xl bg-gray-100 p-1 dark:bg-slate-800">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('yields')}
+                        className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition ${
+                            activeTab === 'yields'
+                                ? 'bg-white text-emerald-800 shadow-sm dark:bg-slate-900 dark:text-emerald-400'
+                                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                    >
+                        <Sunrise size={16} className="text-amber-500" />
+                        <span>1. Production Yields (Morning & Evening)</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('allocations')}
+                        className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition ${
+                            activeTab === 'allocations'
+                                ? 'bg-white text-emerald-800 shadow-sm dark:bg-slate-900 dark:text-emerald-400'
+                                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                    >
+                        <PieChart size={16} className="text-emerald-600" />
+                        <span>2. Allocations (Home, Sold & Calves)</span>
+                    </button>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="min-w-[980px] w-full text-left text-sm">
-                        <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                            <tr>
-                                <th className="px-4 py-3">Animal</th>
-                                <th className="px-4 py-3">Morning</th>
-                                <th className="px-4 py-3">Evening</th>
-                                <th className="px-4 py-3">Total</th>
-                                <th className="px-4 py-3">Home</th>
-                                <th className="px-4 py-3">Sold</th>
-                                <th className="px-4 py-3">Calves</th>
-                                <th className="px-4 py-3">Balance</th>
-                                <th className="px-4 py-3">Comments</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {animals.length ? animals.map(animal => {
-                                const entry = displayEntries[animal.id] || {};
-                                const produced = numberValue(entry.morning_yield) + numberValue(entry.evening_yield);
-                                const allocated = numberValue(entry.home_use_litres) + numberValue(entry.sold_litres) + numberValue(entry.calf_litres);
-                                const balance = produced - allocated;
-                                const hasDiscrepancy = balance < 0 || numberValue(entry.morning_yield) > 35 || numberValue(entry.evening_yield) > 35;
-                                return (
-                                    <tr key={animal.id} className={hasDiscrepancy ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-gray-50/70'}>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <div>
-                                                    <p className="font-semibold text-gray-900">{animal.name}</p>
-                                                    <p className="text-xs text-gray-500">{animal.ear_tag}</p>
+                <div className="text-xs text-gray-500 font-medium">
+                    {activeTab === 'yields' ? (
+                        <span>Logging morning and evening milking volumes</span>
+                    ) : (
+                        <span>Distributing produced milk to sales, home use, and calves</span>
+                    )}
+                </div>
+            </div>
+
+            {/* TAB 1: PRODUCTION YIELDS (MORNING & EVENING) */}
+            {activeTab === 'yields' && (
+                <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                    <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between bg-gradient-to-r from-amber-50/50 to-emerald-50/30">
+                        <div>
+                            <h2 className="font-heading text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <Milk size={18} className="text-emerald-700" />
+                                <span>Milking Sessions</span>
+                            </h2>
+                            <p className="text-xs text-gray-500 mt-0.5">Enter morning and evening milk yields per cow</p>
+                        </div>
+                        <div className="text-xs font-bold px-3 py-1 bg-white rounded-lg border border-gray-200 text-gray-700 shadow-sm">
+                            Total Yield: <span className="text-emerald-700 font-extrabold">{totals.produced.toFixed(1)} L</span>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-[650px] w-full text-left text-sm">
+                            <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                                <tr>
+                                    <th className="px-5 py-3">Animal</th>
+                                    <th className="px-5 py-3">
+                                        <div className="flex items-center gap-1.5 text-amber-700 font-bold">
+                                            <Sunrise size={14} /> Morning (L)
+                                        </div>
+                                    </th>
+                                    <th className="px-5 py-3">
+                                        <div className="flex items-center gap-1.5 text-orange-700 font-bold">
+                                            <Sun size={14} /> Evening (L)
+                                        </div>
+                                    </th>
+                                    <th className="px-5 py-3 font-bold text-emerald-800">Day Total</th>
+                                    <th className="px-5 py-3">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {animals.length ? animals.map(animal => {
+                                    const entry = displayEntries[animal.id] || {};
+                                    const morning = numberValue(entry.morning_yield);
+                                    const evening = numberValue(entry.evening_yield);
+                                    const produced = morning + evening;
+                                    const hasDiscrepancy = morning > 35 || evening > 35;
+                                    return (
+                                        <tr key={animal.id} className={hasDiscrepancy ? 'bg-amber-50/40 hover:bg-amber-50/60' : 'hover:bg-gray-50/70'}>
+                                            <td className="px-5 py-3.5">
+                                                <div className="flex items-center gap-2">
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900">{animal.name}</p>
+                                                        <p className="text-xs text-gray-500 font-mono">{animal.ear_tag}</p>
+                                                    </div>
+                                                    {hasDiscrepancy && (
+                                                        <span className="inline-flex rounded-full bg-amber-100 p-1 text-amber-700" title="High session yield limit (>35L)">
+                                                            <AlertTriangle size={14} />
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                {hasDiscrepancy && (
-                                                    <span className="inline-flex rounded-full bg-red-100 p-1 text-red-600" title="Check yield limits or usage">
-                                                        <AlertTriangle size={14} />
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        {['morning_yield', 'evening_yield'].map(field => (
-                                            <td key={field} className="px-4 py-3">
+                                            </td>
+                                            <td className="px-5 py-3.5">
                                                 <input 
                                                     type="number" 
                                                     min="0" 
                                                     step="0.1" 
-                                                    value={entry[field] ?? ''} 
-                                                    onChange={(event) => handleChange(animal.id, field, event.target.value)} 
-                                                    className={`w-24 rounded-lg border px-2 py-2 text-right focus:outline-none ${numberValue(entry[field]) > 35 ? 'border-amber-500 bg-amber-50 focus:border-amber-600' : 'border-gray-300 focus:border-forest-green'}`} 
+                                                    value={entry.morning_yield ?? ''} 
+                                                    onChange={(event) => handleChange(animal.id, 'morning_yield', event.target.value)} 
+                                                    placeholder="0.0"
+                                                    className={`w-28 rounded-xl border px-3 py-2 text-right text-sm font-semibold focus:outline-none transition ${
+                                                        morning > 35 ? 'border-amber-500 bg-amber-50 focus:border-amber-600' : 'border-gray-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600'
+                                                    }`} 
                                                 />
                                             </td>
-                                        ))}
-                                        <td className="px-4 py-3 font-bold text-gray-900">{produced.toFixed(1)} L</td>
-                                        {['home_use_litres', 'sold_litres', 'calf_litres'].map(field => (
-                                            <td key={field} className="px-4 py-3">
-                                                <input type="number" min="0" step="0.1" value={entry[field] ?? ''} onChange={(event) => handleChange(animal.id, field, event.target.value)} className="w-24 rounded-lg border border-gray-300 px-2 py-2 text-right focus:border-forest-green focus:outline-none" />
+                                            <td className="px-5 py-3.5">
+                                                <input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    step="0.1" 
+                                                    value={entry.evening_yield ?? ''} 
+                                                    onChange={(event) => handleChange(animal.id, 'evening_yield', event.target.value)} 
+                                                    placeholder="0.0"
+                                                    className={`w-28 rounded-xl border px-3 py-2 text-right text-sm font-semibold focus:outline-none transition ${
+                                                        evening > 35 ? 'border-amber-500 bg-amber-50 focus:border-amber-600' : 'border-gray-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600'
+                                                    }`} 
+                                                />
                                             </td>
-                                        ))}
-                                        <td className={`px-4 py-3 font-bold ${balance < 0 ? 'text-red-600' : 'text-green-700'}`}>{balance.toFixed(1)} L</td>
-                                        <td className="px-4 py-3">
-                                            <input type="text" value={entry.notes || ''} onChange={(event) => handleChange(animal.id, 'notes', event.target.value)} placeholder="Optional notes" className="w-52 rounded-lg border border-gray-300 px-3 py-2 focus:border-forest-green focus:outline-none" />
-                                        </td>
+                                            <td className="px-5 py-3.5 font-bold text-emerald-800 text-base">
+                                                {produced > 0 ? `${produced.toFixed(1)} L` : '-'}
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <input 
+                                                    type="text" 
+                                                    value={entry.notes || ''} 
+                                                    onChange={(event) => handleChange(animal.id, 'notes', event.target.value)} 
+                                                    placeholder="Session notes (health, milk color...)" 
+                                                    className="w-full max-w-xs rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none" 
+                                                />
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr>
+                                        <td colSpan="5" className="px-5 py-10 text-center text-gray-500">Add cows to your herd before recording milk.</td>
                                     </tr>
-                                );
-                            }) : (
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            )}
+
+            {/* TAB 2: ALLOCATIONS (USAGE & SALES) */}
+            {activeTab === 'allocations' && (
+                <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                    <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between bg-gradient-to-r from-emerald-50/50 to-blue-50/30">
+                        <div>
+                            <h2 className="font-heading text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <PieChart size={18} className="text-emerald-700" />
+                                <span>Milk Distribution & Allocations</span>
+                            </h2>
+                            <p className="text-xs text-gray-500 mt-0.5">Distribute collected yields to household, commercial sales, and calf feeding</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-600">Total Allocated:</span>
+                            <span className="text-xs font-extrabold px-3 py-1 bg-white rounded-lg border border-gray-200 text-emerald-700 shadow-sm">
+                                {totals.allocated.toFixed(1)} / {totals.produced.toFixed(1)} L
+                            </span>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-[850px] w-full text-left text-sm">
+                            <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                                 <tr>
-                                    <td colSpan="9" className="px-4 py-10 text-center text-gray-500">Add cows to your herd before recording milk.</td>
+                                    <th className="px-5 py-3">Animal</th>
+                                    <th className="px-5 py-3">Produced</th>
+                                    <th className="px-5 py-3 text-blue-700 font-bold">Home Use (L)</th>
+                                    <th className="px-5 py-3 text-emerald-700 font-bold">Sold (L)</th>
+                                    <th className="px-5 py-3 text-amber-700 font-bold">Calves (L)</th>
+                                    <th className="px-5 py-3 font-bold">Net Balance</th>
+                                    <th className="px-5 py-3">Comments</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {animals.length ? animals.map(animal => {
+                                    const entry = displayEntries[animal.id] || {};
+                                    const produced = numberValue(entry.morning_yield) + numberValue(entry.evening_yield);
+                                    const allocated = numberValue(entry.home_use_litres) + numberValue(entry.sold_litres) + numberValue(entry.calf_litres);
+                                    const balance = produced - allocated;
+                                    const hasDiscrepancy = balance < 0;
+                                    return (
+                                        <tr key={animal.id} className={hasDiscrepancy ? 'bg-red-50/50 hover:bg-red-50/70' : 'hover:bg-gray-50/70'}>
+                                            <td className="px-5 py-3.5">
+                                                <div>
+                                                    <p className="font-semibold text-gray-900">{animal.name}</p>
+                                                    <p className="text-xs text-gray-500 font-mono">{animal.ear_tag}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3.5 font-bold text-gray-900 text-sm">
+                                                {produced.toFixed(1)} L
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    step="0.1" 
+                                                    value={entry.home_use_litres ?? ''} 
+                                                    onChange={(event) => handleChange(animal.id, 'home_use_litres', event.target.value)} 
+                                                    placeholder="0.0"
+                                                    className="w-24 rounded-xl border border-gray-200 px-3 py-2 text-right text-sm font-semibold focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 transition" 
+                                                />
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    step="0.1" 
+                                                    value={entry.sold_litres ?? ''} 
+                                                    onChange={(event) => handleChange(animal.id, 'sold_litres', event.target.value)} 
+                                                    placeholder="0.0"
+                                                    className="w-24 rounded-xl border border-gray-200 px-3 py-2 text-right text-sm font-semibold focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 transition" 
+                                                />
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    step="0.1" 
+                                                    value={entry.calf_litres ?? ''} 
+                                                    onChange={(event) => handleChange(animal.id, 'calf_litres', event.target.value)} 
+                                                    placeholder="0.0"
+                                                    className="w-24 rounded-xl border border-gray-200 px-3 py-2 text-right text-sm font-semibold focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 transition" 
+                                                />
+                                            </td>
+                                            <td className={`px-5 py-3.5 font-extrabold ${balance < 0 ? 'text-red-600' : balance === 0 ? 'text-gray-400' : 'text-emerald-700'}`}>
+                                                {balance.toFixed(1)} L
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <input 
+                                                    type="text" 
+                                                    value={entry.notes || ''} 
+                                                    onChange={(event) => handleChange(animal.id, 'notes', event.target.value)} 
+                                                    placeholder="Buyer details, calf name..." 
+                                                    className="w-full max-w-xs rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none" 
+                                                />
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr>
+                                        <td colSpan="7" className="px-5 py-10 text-center text-gray-500">Add cows to your herd before recording allocations.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            )}
 
             <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                <div className="border-b border-gray-100 px-5 py-4">
-                    <h2 className="font-heading text-lg font-bold text-gray-900">Records for {date}</h2>
+                <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+                    <div>
+                        <h2 className="font-heading text-lg font-bold text-gray-900">Records for {date}</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">Existing saved entries on this date</p>
+                    </div>
+                    {editingAnimalId && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                            <PenLine size={13} /> Editing unlocked via OTP
+                        </span>
+                    )}
                 </div>
                 <div className="overflow-x-auto">
                     <table className="min-w-[820px] w-full text-left text-sm">
@@ -302,27 +519,86 @@ const DailyMilkEntry = () => {
                                 <th className="px-4 py-3">Sold</th>
                                 <th className="px-4 py-3">Calves</th>
                                 <th className="px-4 py-3">Comments</th>
+                                <th className="px-4 py-3 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {summary?.records?.length ? summary.records.map(record => (
-                                <tr key={record.id}>
-                                    <td className="px-4 py-3 font-medium text-gray-900">{record.animal_name}</td>
+                                <tr key={record.id} className={editingAnimalId === record.animal ? "bg-emerald-50/40" : ""}>
+                                    <td className="px-4 py-3 font-medium text-gray-900">
+                                        {record.animal_name}
+                                        {editingAnimalId === record.animal && (
+                                            <span className="ml-2 inline-block text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-bold">
+                                                Active Edit
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3">{Number(record.total_yield).toFixed(1)} L</td>
                                     <td className="px-4 py-3">{Number(record.home_use_litres).toFixed(1)} L</td>
                                     <td className="px-4 py-3">{Number(record.sold_litres).toFixed(1)} L</td>
                                     <td className="px-4 py-3">{Number(record.calf_litres).toFixed(1)} L</td>
                                     <td className="px-4 py-3 text-gray-600">{record.notes || '-'}</td>
+                                    <td className="px-4 py-3 text-right">
+                                        {isWorker ? (
+                                            <span className="text-xs text-gray-400 italic">Locked</span>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setRecordToEdit(record);
+                                                    setShowOtpModal(true);
+                                                }}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition text-xs font-semibold shadow-sm"
+                                                title="Edit record (Requires OTP)"
+                                            >
+                                                <PenLine size={14} className="text-emerald-600" />
+                                                <span>Edit</span>
+                                            </button>
+                                        )}
+                                    </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="6" className="px-4 py-8 text-center text-gray-500">No saved records for this date yet.</td>
+                                    <td colSpan="7" className="px-4 py-8 text-center text-gray-500">No saved records for this date yet.</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
             </section>
+
+            {/* OTP Verification Modal for Record Editing */}
+            <VerifyOTPModal
+                isOpen={showOtpModal}
+                onClose={() => {
+                    setShowOtpModal(false);
+                    setRecordToEdit(null);
+                }}
+                phoneNumber={user?.phone_number || ''}
+                title="Verify Milk Ledger Modification"
+                subtitle={`Enter the 6-digit OTP to modify saved milk records for ${recordToEdit?.animal_name || 'this animal'}`}
+                onVerified={() => {
+                    setShowOtpModal(false);
+                    if (recordToEdit) {
+                        setEditingAnimalId(recordToEdit.animal);
+                        setEntries(prev => ({
+                            ...prev,
+                            [recordToEdit.animal]: {
+                                animal: recordToEdit.animal,
+                                animal_name: recordToEdit.animal_name,
+                                morning_yield: recordToEdit.morning_yield ?? '',
+                                evening_yield: recordToEdit.evening_yield ?? '',
+                                home_use_litres: recordToEdit.home_use_litres ?? '',
+                                sold_litres: recordToEdit.sold_litres ?? '',
+                                calf_litres: recordToEdit.calf_litres ?? '',
+                                notes: recordToEdit.notes ?? '',
+                            }
+                        }));
+                        addToast(`Edit unlocked for ${recordToEdit.animal_name}. Update values in the entry table above and save.`, 'success');
+                    }
+                    setRecordToEdit(null);
+                }}
+            />
 
             {/* Confirmation Preview Modal */}
             {showPreviewModal && (

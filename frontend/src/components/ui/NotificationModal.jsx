@@ -29,22 +29,22 @@ export const NotificationModal = ({ isOpen, onClose }) => {
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]" 
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity" 
         onClick={onClose} 
       />
 
       {/* Popover / Dropdown Container */}
-      <div className="absolute right-4 top-16 md:right-8 md:top-20 z-50 w-full max-w-sm sm:max-w-md rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 animate-in fade-in slide-in-from-top-2 duration-200">
+      <div className="fixed right-3 top-16 sm:right-6 sm:top-20 z-50 w-[calc(100vw-1.5rem)] max-w-sm sm:max-w-md rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 animate-in fade-in slide-in-from-top-2 duration-200">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl text-emerald-700 dark:text-emerald-400">
               <Bell size={18} />
             </div>
             <div>
-              <h3 className="font-heading font-bold text-slate-900 dark:text-slate-100 text-base">
+              <h3 className="font-heading font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">
                 Notifications
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 {unreadAlerts.length} unread {unreadAlerts.length === 1 ? 'alert' : 'alerts'}
               </p>
             </div>

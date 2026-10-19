@@ -26,7 +26,7 @@ const Sidebar = ({ isOpen, toggle, isMobile }) => {
     { icon: Stethoscope, label: 'Find Vet', path: '/find-vet' },
     { icon: Building2, label: 'Find Buyers', path: '/find-buyer' },
     { icon: UsersRound, label: 'Community', path: '/community' },
-    { icon: Calendar, label: 'Tasks', path: '/tasks' },
+    { icon: Calendar, label: 'Tasks', path: '/tasks', badge: 'Enterprise' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
     { icon: Bell, label: t('alerts'), path: '/alerts' },
     { icon: Settings, label: t('settings'), path: '/settings' },
@@ -98,7 +98,16 @@ const Sidebar = ({ isOpen, toggle, isMobile }) => {
                 <span className={cn("grid h-9 w-9 place-items-center rounded-lg", isActive ? "bg-emerald-700 text-white" : "bg-transparent text-slate-400 group-hover:text-slate-700")}>
                   <item.icon size={20} />
                 </span>
-                {(!collapsed || isMobile) && <span className="font-semibold">{item.label}</span>}
+                {(!collapsed || isMobile) && (
+                  <div className="flex flex-1 items-center justify-between">
+                    <span className="font-semibold">{item.label}</span>
+                    {item.badge && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                )}
               </Link>
             );
           })}
