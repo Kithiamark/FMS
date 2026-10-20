@@ -44,10 +44,52 @@ class MilkRecordViewSet(viewsets.ModelViewSet):
     def bulk(self, request):
         # DailyMilkEntry sends all rows for a date together. update_or_create makes
         # repeated saves idempotent for the same animal/date pair for Farm Owners.
-        # For FARM_WORKER users, records are immutable once logged and cannot be backdated.
-        records = request.data if isinstance(request.data, list) else request.data.get('records', [])
+        data = request.data
+        farm_allocation = None
+        if isinstance(data, dict) and 'farm_allocation' in data:
+            records = data.get('records', [])
+            farm_allocation = data.get('farm_allocation') or {}
+        elif isinstance(data, list):
+            records = data
+        else:
+            records = data.get('records', [])
+
         if not records:
             return Response({'error': 'No milk records supplied.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # If a single farm_allocation is provided, validate and attach/distribute it across the day's records
+        if farm_allocation:
+            home = float(farm_allocation.get('home_use_litres') or 0)
+            sold = float(farm_allocation.get('sold_litres') or 0)
+            calves = float(farm_allocation.get('calf_litres') or 0)
+            alloc_notes = farm_allocation.get('notes', '')
+
+            if home < 0 or sold < 0 or calves < 0:
+                return Response({'error': 'Allocation litres cannot be negative.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            total_entry_yield = sum(
+                (float(r.get('morning_yield') or 0) + float(r.get('evening_yield') or 0))
+                for r in records
+            )
+            total_allocated = home + sold + calves
+            if total_allocated > total_entry_yield:
+                return Response({
+                    'error': f'Total farm allocation ({total_allocated:.1f}L) cannot exceed total milk produced ({total_entry_yield:.1f}L).'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Assign the single farm allocation to the first record, zeroing the others
+            # This ensures Sum(home_use_litres), Sum(sold_litres), Sum(calf_litres) match the farm allocation exactly
+            for idx, r in enumerate(records):
+                if idx == 0:
+                    r['home_use_litres'] = home
+                    r['sold_litres'] = sold
+                    r['calf_litres'] = calves
+                    if alloc_notes and not r.get('notes'):
+                        r['notes'] = alloc_notes
+                else:
+                    r['home_use_litres'] = 0
+                    r['sold_litres'] = 0
+                    r['calf_litres'] = 0
 
         user_farm = get_user_farm(request.user)
         is_worker = request.user.role == 'FARM_WORKER'

@@ -32,8 +32,6 @@ class MilkRecord(models.Model):
         usage_total = (self.home_use_litres or 0) + (self.sold_litres or 0) + (self.calf_litres or 0)
         if usage_total < 0:
             raise ValidationError('Milk usage values cannot be negative.')
-        if usage_total > morning + evening:
-            raise ValidationError({'sold_litres': 'Milk usage cannot exceed total production.'})
 
     def save(self, *args, **kwargs):
         self.morning_yield = self.morning_yield or 0

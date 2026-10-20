@@ -168,3 +168,48 @@ def test_worker_cannot_update_or_delete_via_detail_endpoint(api_client, farm_set
     res_del = api_client.delete(f'/api/v1/milk/{record.id}/')
     assert res_del.status_code == 403
 
+@pytest.mark.django_db
+def test_bulk_save_with_single_farm_allocation(api_client, farm_setup):
+    farmer = farm_setup['farmer']
+    cow1 = farm_setup['cow']
+    farm = farm_setup['farm']
+    cow2 = Animal.objects.create(
+        farm=farm,
+        name='Daisy',
+        ear_tag='AC-002',
+        sex='Cow',
+        breed='Jersey',
+        date_of_birth=timezone.now().date() - timedelta(days=400),
+        weight_kg=400.0
+    )
+    api_client.force_authenticate(user=farmer)
+    today = timezone.now().date().isoformat()
+    
+    payload = {
+        'records': [
+            {'animal': str(cow1.id), 'date': today, 'morning_yield': 15.0, 'evening_yield': 10.0, 'notes': 'Cow 1 ok'},
+            {'animal': str(cow2.id), 'date': today, 'morning_yield': 12.0, 'evening_yield': 8.0, 'notes': 'Cow 2 ok'},
+        ],
+        'farm_allocation': {
+            'home_use_litres': 5.0,
+            'sold_litres': 30.0,
+            'calf_litres': 6.0,
+            'notes': 'Delivered to KCC'
+        }
+    }
+    # Total yield is 25 + 20 = 45L. Allocated is 5 + 30 + 6 = 41L (valid)
+    res = api_client.post('/api/v1/milk/bulk/', payload, format='json')
+    assert res.status_code == 200
+    assert len(res.data) == 2
+
+    # Check daily summary aggregates match farm allocation exactly
+    summary_res = api_client.get(f'/api/v1/milk/summary/daily/?date={today}')
+    assert summary_res.status_code == 200
+    usage = summary_res.data['usage']
+    assert usage['home'] == 5.0
+    assert usage['sold'] == 30.0
+    assert usage['calves'] == 6.0
+    assert usage['allocated'] == 41.0
+    assert usage['unallocated'] == 4.0
+
+

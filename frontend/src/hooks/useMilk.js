@@ -47,8 +47,9 @@ export const useCreateMilkRecord = () => {
 export const useBulkCreateMilkRecords = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (records) => {
-            const response = await api.post('/milk/bulk/', { records });
+        mutationFn: async (payload) => {
+            const body = Array.isArray(payload) ? { records: payload } : payload;
+            const response = await api.post('/milk/bulk/', body);
             return response.data;
         },
         onSuccess: () => {
