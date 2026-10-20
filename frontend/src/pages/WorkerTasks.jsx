@@ -7,8 +7,9 @@ import { Modal } from '../components/ui/Modal';
 import { CustomDatePicker } from '../components/ui/CustomDatePicker';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
-import { CheckCircle2, Clock, Calendar, Plus, Trash2, Lock, Sparkles, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, Calendar, Plus, Trash2, Lock, Sparkles, ArrowRight, CheckSquare, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PersonalTodoList } from '../components/tasks/PersonalTodoList';
 
 const WorkerTasks = () => {
     const { user } = useAuth();
@@ -26,6 +27,7 @@ const WorkerTasks = () => {
     const isFarmer = user?.role === 'FARMER';
     const plan = user?.farm?.subscription?.plan;
     const isEnterprise = plan === 'Enterprise' || user?.role === 'ADMIN' || user?.is_superuser;
+    const [viewMode, setViewMode] = useState(isEnterprise ? 'worker_tasks' : 'todo'); // 'todo' | 'worker_tasks'
 
     const handleCreateTask = (e) => {
         e.preventDefault();
@@ -61,58 +63,109 @@ const WorkerTasks = () => {
     return (
         <MainLayout>
             <div className="space-y-6">
-                {/* Enterprise Banner for non-enterprise farmers */}
-                {isFarmer && !isEnterprise && (
-                    <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 shadow-sm dark:border-amber-900/60 dark:from-amber-950/40 dark:to-orange-950/30">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div className="flex items-start gap-3">
-                                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                    <Lock size={22} />
-                                </div>
-                                <div>
-                                    <h3 className="font-heading font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                        Enterprise Plan Required for Worker Task Management
-                                        <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full">
-                                            Enterprise
-                                        </span>
-                                    </h3>
-                                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-xl">
-                                        Assigning chores, setting due dates, tracking completion statuses, and audit logging for farm workers is exclusively available to Enterprise tier members.
-                                    </p>
-                                </div>
-                            </div>
-                            <Link
-                                to="/finance"
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-800 transition whitespace-nowrap"
-                            >
-                                <Sparkles size={14} />
-                                <span>Upgrade to Enterprise</span>
-                                <ArrowRight size={14} />
-                            </Link>
-                        </div>
+                {/* Header with Title and Mode Switcher */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold font-heading text-slate-900 dark:text-white">
+                            {viewMode === 'todo' ? 'Farm To-Do Checklist' : 'Daily Tasks & Worker Chores'}
+                        </h1>
+                        <p className="text-slate-500 text-sm">
+                            {viewMode === 'todo' 
+                                ? 'Your personal daily farm chore list and reminders' 
+                                : isFarmer ? 'Manage and assign tasks to your workers' : 'Your assigned chores'}
+                        </p>
                     </div>
+
+                    <div className="flex items-center gap-3">
+                        {/* Tab Switcher between Personal To-Do and Worker Chores */}
+                        <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('todo')}
+                                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
+                                    viewMode === 'todo'
+                                        ? 'bg-white text-emerald-800 shadow-sm dark:bg-slate-900 dark:text-emerald-400'
+                                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                                }`}
+                            >
+                                <CheckSquare size={14} />
+                                <span>My To-Do</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('worker_tasks')}
+                                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
+                                    viewMode === 'worker_tasks'
+                                        ? 'bg-white text-emerald-800 shadow-sm dark:bg-slate-900 dark:text-emerald-400'
+                                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                                }`}
+                            >
+                                <Users size={14} />
+                                <span>Worker Chores</span>
+                                {!isEnterprise && (
+                                    <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-1.5 py-0.2 rounded">
+                                        Ent
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+
+                        {viewMode === 'worker_tasks' && isFarmer && (
+                            <Button 
+                                onClick={() => {
+                                    if (!isEnterprise) {
+                                        addToast('Task assignment requires an active Enterprise subscription.', 'error');
+                                        return;
+                                    }
+                                    setActiveModal(true);
+                                }} 
+                                className={`flex items-center gap-2 ${isEnterprise ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-400 hover:bg-slate-500 opacity-80'}`}
+                            >
+                                {isEnterprise ? <Plus size={18} /> : <Lock size={16} />} Assign Task
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {/* VIEW 1: PERSONAL TO-DO LIST */}
+                {viewMode === 'todo' && (
+                    <PersonalTodoList />
                 )}
 
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold font-heading text-slate-900 dark:text-white">Daily Tasks & Chores</h1>
-                        <p className="text-slate-500">{isFarmer ? 'Manage and assign tasks to your workers' : 'Your assigned chores'}</p>
-                    </div>
-                    {isFarmer && (
-                        <Button 
-                            onClick={() => {
-                                if (!isEnterprise) {
-                                    addToast('Task assignment requires an active Enterprise subscription.', 'error');
-                                    return;
-                                }
-                                setActiveModal(true);
-                            }} 
-                            className={`flex items-center gap-2 ${isEnterprise ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-400 hover:bg-slate-500 opacity-80'}`}
-                        >
-                            {isEnterprise ? <Plus size={18} /> : <Lock size={16} />} Assign Task
-                        </Button>
-                    )}
-                </div>
+                {/* VIEW 2: ENTERPRISE WORKER TASKS */}
+                {viewMode === 'worker_tasks' && (
+                    <div className="space-y-6">
+                        {/* Enterprise Banner for non-enterprise farmers */}
+                        {isFarmer && !isEnterprise && (
+                            <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 shadow-sm dark:border-amber-900/60 dark:from-amber-950/40 dark:to-orange-950/30">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                            <Lock size={22} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-heading font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                                Enterprise Plan Required for Multi-Worker Chore Assignment
+                                                <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full">
+                                                    Enterprise
+                                                </span>
+                                            </h3>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-xl">
+                                                Assigning chores, setting due dates, tracking completion statuses, and audit logging for multiple farm workers is exclusively available to Enterprise tier members. For personal task tracking, use the <strong>My To-Do</strong> tab.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        to="/finance"
+                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-800 transition whitespace-nowrap"
+                                    >
+                                        <Sparkles size={14} />
+                                        <span>Upgrade to Enterprise</span>
+                                        <ArrowRight size={14} />
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
 
                 <div className="grid md:grid-cols-3 gap-6">
                     {/* Status Columns */}
@@ -179,6 +232,8 @@ const WorkerTasks = () => {
                         </div>
                     ))}
                 </div>
+                    </div>
+                )}
             </div>
 
             <Modal isOpen={activeModal} onClose={() => setActiveModal(false)} title="Assign New Task">

@@ -69,3 +69,14 @@ export const useUpdateMilkRecord = () => {
     },
   });
 };
+
+export const useDeleteMilkRecord = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/milk/${id}/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['milk-records'] });
+      queryClient.invalidateQueries({ queryKey: ['milk-daily'] });
+    },
+  });
+};

@@ -73,6 +73,49 @@ class Subscription(models.Model):
     mpesa_checkout_id = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @staticmethod
+    def is_sabbath_window(dt=None):
+        """
+        Returns True if dt (or current time in local timezone) falls between
+        Friday 18:00 (sunset) and Saturday 18:00 (sunset).
+        """
+        if dt is None:
+            dt = timezone.localtime()
+        elif timezone.is_naive(dt):
+            dt = timezone.make_aware(dt)
+        else:
+            dt = timezone.localtime(dt)
+            
+        weekday = dt.weekday() # Monday is 0, Friday is 4, Saturday is 5, Sunday is 6
+        hour = dt.hour
+        
+        # Friday 18:00 to 23:59
+        if weekday == 4 and hour >= 18:
+            return True
+        # Saturday 00:00 to 17:59
+        if weekday == 5 and hour < 18:
+            return True
+        return False
+
+    @property
+    def effective_end_date(self):
+        """
+        Returns the subscription end date automatically extended past Saturdays.
+        If the raw end_date falls on a Friday or Saturday (or during the Sabbath),
+        it extends to Sunday so the farmer never loses access on the Sabbath.
+        Additionally, adds 1 day for each Saturday spanned.
+        """
+        raw = self.end_date or self.trial_ends_at
+        if not raw:
+            return None
+        
+        # If raw falls on Friday or Saturday, extend past Saturday to Sunday
+        if raw.weekday() == 4: # Friday
+            return raw + timedelta(days=2) # Sunday
+        elif raw.weekday() == 5: # Saturday
+            return raw + timedelta(days=1) # Sunday
+        return raw
+
     @property
     def is_in_grace_period(self):
         """
@@ -80,8 +123,8 @@ class Subscription(models.Model):
         """
         if self.status == self.Status.FROZEN:
             return False
-        today = timezone.now().date()
-        target_date = self.end_date or self.trial_ends_at
+        today = timezone.localtime().date()
+        target_date = self.effective_end_date
         if target_date and target_date < today <= (target_date + timedelta(days=7)):
             return True
         return False
@@ -95,14 +138,12 @@ class Subscription(models.Model):
         """
         if self.status == self.Status.FROZEN:
             return True
+        today = timezone.localtime().date()
+        target_date = self.effective_end_date
         if self.status == self.Status.ACTIVE:
-            target_date = self.end_date or self.trial_ends_at
-            if target_date and target_date < timezone.now().date():
-                today = timezone.now().date()
+            if target_date and target_date < today:
                 return today > (target_date + timedelta(days=7))
             return False
-        today = timezone.now().date()
-        target_date = self.end_date or self.trial_ends_at
         if target_date:
             return today > (target_date + timedelta(days=7))
         return self.status != self.Status.ACTIVE

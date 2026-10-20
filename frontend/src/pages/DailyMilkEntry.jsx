@@ -1,14 +1,14 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAnimals } from '../hooks/useAnimals';
-import { useDailyMilkSummary, useBulkCreateMilkRecords } from '../hooks/useMilk';
+import { useDailyMilkSummary, useBulkCreateMilkRecords, useDeleteMilkRecord } from '../hooks/useMilk';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { CustomDatePicker } from '../components/ui/CustomDatePicker';
 import { 
     ArrowLeft, Save, AlertTriangle, CheckCircle, Info, X, ShieldAlert, 
-    PenLine, Sunrise, Sun, PieChart, Milk, Home, ShoppingCart, Baby
+    PenLine, Sunrise, Sun, PieChart, Milk, Home, ShoppingCart, Baby, Trash2
 } from 'lucide-react';
 import { VerifyOTPModal } from '../components/ui/VerifyOTPModal';
 import { enqueueOfflineMutation } from '../utils/offlineQueue';
@@ -36,6 +36,7 @@ const DailyMilkEntry = () => {
     });
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [recordToEdit, setRecordToEdit] = useState(null);
+    const [otpAction, setOtpAction] = useState('EDIT'); // 'EDIT' | 'DELETE'
     const [showOtpModal, setShowOtpModal] = useState(false);
     const [editingAnimalId, setEditingAnimalId] = useState(null);
     const { addToast } = useToast();
@@ -43,6 +44,7 @@ const DailyMilkEntry = () => {
     const { data: animals = [], isLoading: animalsLoading } = useAnimals({ sex: 'Cow' });
     const { data: summary, isLoading: summaryLoading } = useDailyMilkSummary(date);
     const { mutate: bulkSave, isPending } = useBulkCreateMilkRecords();
+    const deleteRecord = useDeleteMilkRecord();
 
     // When date changes in URL or via picker, update state
     useEffect(() => {
@@ -582,18 +584,34 @@ const DailyMilkEntry = () => {
                                         {isWorker ? (
                                             <span className="text-xs text-gray-400 italic">Locked</span>
                                         ) : (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setRecordToEdit(record);
-                                                    setShowOtpModal(true);
-                                                }}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:border-emerald-500 transition text-xs font-semibold shadow-sm"
-                                                title="Edit record (Requires OTP)"
-                                            >
-                                                <PenLine size={13} className="text-emerald-600 dark:text-emerald-400" />
-                                                <span>Edit Record</span>
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setRecordToEdit(record);
+                                                        setOtpAction('EDIT');
+                                                        setShowOtpModal(true);
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:border-emerald-500 transition text-xs font-semibold shadow-sm"
+                                                    title="Edit record (Requires OTP)"
+                                                >
+                                                    <PenLine size={13} className="text-emerald-600 dark:text-emerald-400" />
+                                                    <span>Edit</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setRecordToEdit(record);
+                                                        setOtpAction('DELETE');
+                                                        setShowOtpModal(true);
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 hover:border-rose-300 dark:border-rose-900/50 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-950/40 transition text-xs font-semibold shadow-sm"
+                                                    title="Delete record (Requires OTP)"
+                                                >
+                                                    <Trash2 size={13} className="text-rose-600 dark:text-rose-400" />
+                                                    <span>Delete</span>
+                                                </button>
+                                            </div>
                                         )}
                                     </td>
                                 </tr>
@@ -607,7 +625,7 @@ const DailyMilkEntry = () => {
                 </div>
             </section>
 
-            {/* OTP Verification Modal for Record Editing */}
+            {/* OTP Verification Modal for Record Editing / Deleting */}
             <VerifyOTPModal
                 isOpen={showOtpModal}
                 onClose={() => {
@@ -615,23 +633,39 @@ const DailyMilkEntry = () => {
                     setRecordToEdit(null);
                 }}
                 phoneNumber={user?.phone_number || ''}
-                title="Verify Milk Ledger Modification"
-                subtitle={`Enter the 6-digit OTP to modify saved milk records for ${recordToEdit?.animal_name || 'this animal'}`}
+                title={otpAction === 'DELETE' ? 'Verify Milk Record Deletion' : 'Verify Milk Ledger Modification'}
+                subtitle={
+                    otpAction === 'DELETE'
+                        ? `Enter the 6-digit OTP to permanently delete the milk record for ${recordToEdit?.animal_name || 'this animal'}`
+                        : `Enter the 6-digit OTP to modify saved milk records for ${recordToEdit?.animal_name || 'this animal'}`
+                }
                 onVerified={() => {
                     setShowOtpModal(false);
                     if (recordToEdit) {
-                        setEditingAnimalId(recordToEdit.animal);
-                        setEntries(prev => ({
-                            ...prev,
-                            [recordToEdit.animal]: {
-                                animal: recordToEdit.animal,
-                                animal_name: recordToEdit.animal_name,
-                                morning_yield: recordToEdit.morning_yield ?? '',
-                                evening_yield: recordToEdit.evening_yield ?? '',
-                                notes: recordToEdit.notes ?? '',
-                            }
-                        }));
-                        addToast(`Edit unlocked for ${recordToEdit.animal_name}. Update values in the cow table above and save.`, 'success');
+                        if (otpAction === 'DELETE') {
+                            deleteRecord.mutate(recordToEdit.id, {
+                                onSuccess: () => {
+                                    addToast(`Record for ${recordToEdit.animal_name} deleted successfully.`, 'success');
+                                },
+                                onError: (err) => {
+                                    const errMsg = err.response?.data?.detail || err.response?.data?.error || 'Failed to delete record.';
+                                    addToast(errMsg, 'error');
+                                }
+                            });
+                        } else {
+                            setEditingAnimalId(recordToEdit.animal);
+                            setEntries(prev => ({
+                                ...prev,
+                                [recordToEdit.animal]: {
+                                    animal: recordToEdit.animal,
+                                    animal_name: recordToEdit.animal_name,
+                                    morning_yield: recordToEdit.morning_yield ?? '',
+                                    evening_yield: recordToEdit.evening_yield ?? '',
+                                    notes: recordToEdit.notes ?? '',
+                                }
+                            }));
+                            addToast(`Edit unlocked for ${recordToEdit.animal_name}. Update values in the cow table above and save.`, 'success');
+                        }
                     }
                     setRecordToEdit(null);
                 }}

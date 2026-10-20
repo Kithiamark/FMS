@@ -112,6 +112,30 @@ export const NotificationModal = ({ isOpen, onClose }) => {
           )}
         </div>
 
+        {/* Push Notification Access Banner / Button */}
+        {typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted' && (
+          <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs dark:border-emerald-900/40 dark:bg-emerald-950/40 flex items-center justify-between gap-2">
+            <span className="text-emerald-900 dark:text-emerald-300">
+              Get instant browser alerts for cattle treatments & tasks.
+            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await Notification.requestPermission();
+                if (res === 'granted') {
+                  new Notification('FMS Farm Alerts Activated', {
+                    body: 'You will now receive notifications for vaccinations, heat dates, and tasks.',
+                    icon: '/pwa-192x192.png'
+                  });
+                }
+              }}
+              className="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-700 text-white font-bold hover:bg-emerald-800 transition"
+            >
+              Enable
+            </button>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="border-t border-slate-100 dark:border-slate-800 pt-2.5 flex items-center justify-between text-xs">
           <Link 

@@ -153,6 +153,12 @@ class SubscriptionViewSet(viewsets.ViewSet):
         mpesa_receipt = (request.data.get('mpesa_receipt') or request.data.get('mpesa_ref') or '').strip().upper()
         mode = request.data.get('mode', 'manual') # 'manual' or 'test'
 
+        # Sabbath Payment Restriction (Friday 18:00 to Saturday 18:00 EAT)
+        if Subscription.is_sabbath_window():
+            return Response({
+                'error': 'Payments are closed in observance of the Sabbath (Friday evening to Saturday evening). All active plans are automatically extended past the Sabbath.'
+            }, status=400)
+
         if plan not in PLAN_CATALOG or plan == Subscription.Plan.TRIAL:
             return Response({'error': 'Please select a valid tier.'}, status=400)
 

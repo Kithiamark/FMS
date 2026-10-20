@@ -131,32 +131,42 @@ export const CalendarModal = ({
 
         {/* Month & Year Navigation */}
         <div className="flex items-center justify-between px-5 pt-4 pb-2 gap-2">
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            {/* Month Picker */}
-            <select
-              value={currentMonth}
-              onChange={(e) => setCurrentMonth(Number(e.target.value))}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 cursor-pointer"
-            >
-              {MONTH_NAMES.map((name, index) => (
-                <option key={name} value={index}>
-                  {name}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* Styled Month Picker */}
+            <div className="relative">
+              <select
+                value={currentMonth}
+                onChange={(e) => setCurrentMonth(Number(e.target.value))}
+                className="appearance-none rounded-xl border border-slate-200 bg-slate-50/80 pl-3 pr-7 py-1.5 text-xs font-bold text-slate-800 shadow-sm transition hover:border-emerald-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:border-emerald-500 dark:focus:bg-slate-900 cursor-pointer"
+              >
+                {MONTH_NAMES.map((name, index) => (
+                  <option key={name} value={index} className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 dark:text-slate-500">
+                <ChevronRight size={13} className="rotate-90" />
+              </div>
+            </div>
 
-            {/* Year Picker */}
-            <select
-              value={currentYear}
-              onChange={(e) => setCurrentYear(Number(e.target.value))}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 cursor-pointer"
-            >
-              {Array.from({ length: 30 }, (_, i) => today.getFullYear() - 15 + i).map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+            {/* Styled Year Picker */}
+            <div className="relative">
+              <select
+                value={currentYear}
+                onChange={(e) => setCurrentYear(Number(e.target.value))}
+                className="appearance-none rounded-xl border border-slate-200 bg-slate-50/80 pl-3 pr-7 py-1.5 text-xs font-bold text-slate-800 shadow-sm transition hover:border-emerald-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:border-emerald-500 dark:focus:bg-slate-900 cursor-pointer"
+              >
+                {Array.from({ length: 30 }, (_, i) => today.getFullYear() - 15 + i).map((y) => (
+                  <option key={y} value={y} className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 dark:text-slate-500">
+                <ChevronRight size={13} className="rotate-90" />
+              </div>
+            </div>
 
             <button 
               type="button"

@@ -89,3 +89,53 @@ def test_admin_sees_all_plans(api_client, admin_user):
     assert Subscription.Plan.BASIC in plans
     assert Subscription.Plan.BUYER_STARTER in plans
     assert Subscription.Plan.BUYER_COMMERCIAL in plans
+
+from datetime import datetime
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
+
+def test_sabbath_window_detection():
+    eat = ZoneInfo('Africa/Nairobi')
+    
+    # Friday 17:00 (Before Sabbath) -> False
+    fri_before = datetime(2026, 10, 23, 17, 0, tzinfo=eat)
+    assert Subscription.is_sabbath_window(fri_before) is False
+    
+    # Friday 18:30 (Sabbath started) -> True
+    fri_sabbath = datetime(2026, 10, 23, 18, 30, tzinfo=eat)
+    assert Subscription.is_sabbath_window(fri_sabbath) is True
+    
+    # Saturday 12:00 (Mid-Sabbath) -> True
+    sat_noon = datetime(2026, 10, 24, 12, 0, tzinfo=eat)
+    assert Subscription.is_sabbath_window(sat_noon) is True
+    
+    # Saturday 19:00 (Sabbath ended) -> False
+    sat_after = datetime(2026, 10, 24, 19, 0, tzinfo=eat)
+    assert Subscription.is_sabbath_window(sat_after) is False
+
+@pytest.mark.django_db
+def test_checkout_rejected_during_sabbath(api_client, farmer_user):
+    api_client.force_authenticate(user=farmer_user)
+    with patch('finance.models.Subscription.is_sabbath_window', return_value=True):
+        res = api_client.post('/api/v1/subscription/checkout/', {
+            'plan': Subscription.Plan.BASIC,
+            'phone_number': '+254711000111'
+        })
+        assert res.status_code == 400
+        assert 'sabbath' in res.data.get('error', '').lower()
+
+@pytest.mark.django_db
+def test_subscription_auto_extended_past_saturday(farmer_user):
+    from core.utils import get_user_farm
+    farm = get_user_farm(farmer_user)
+    from datetime import date
+    # Friday 2026-10-23
+    sub = Subscription.objects.create(
+        farm=farm,
+        plan=Subscription.Plan.BASIC,
+        status=Subscription.Status.ACTIVE,
+        start_date=date(2026, 9, 23),
+        end_date=date(2026, 10, 23) # Friday
+    )
+    # Effective end date should automatically extend to Sunday (2026-10-25)
+    assert sub.effective_end_date == date(2026, 10, 25)

@@ -21,6 +21,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     plan_label = serializers.CharField(source='get_plan_display', read_only=True)
     feature_list = serializers.SerializerMethodField()
     monthly_price_kes = serializers.SerializerMethodField()
+    effective_end_date = serializers.DateField(read_only=True)
+    is_sabbath_active = serializers.SerializerMethodField()
     is_in_grace_period = serializers.BooleanField(read_only=True)
     is_data_logging_only = serializers.BooleanField(read_only=True)
 
@@ -37,6 +39,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'mpesa_ref',
             'mpesa_checkout_id',
         )
+
+    def get_is_sabbath_active(self, obj):
+        return Subscription.is_sabbath_window()
 
     def get_feature_list(self, obj):
         if obj.features_snapshot and 'features' in obj.features_snapshot:
