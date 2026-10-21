@@ -66,8 +66,8 @@ fun PillBadge(
 fun HeroHeader(
     title: String,
     subtitle: String,
-    roleBadge: String,
-    onNotificationClick: () -> Unit,
+    roleBadge: String = "Enterprise",
+    onNotificationClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(

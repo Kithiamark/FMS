@@ -15,8 +15,9 @@ import com.example.fms.data.model.CattleRecord
 import com.example.fms.data.model.UserRole
 import com.example.fms.ui.components.navigation.BottomNavItem
 import com.example.fms.ui.components.navigation.IslandBottomBar
-import com.example.fms.ui.screens.AggregatorDashboard
-import com.example.fms.ui.screens.VetDashboard
+import com.example.fms.ui.screens.admin.AdminDashboard
+import com.example.fms.ui.screens.aggregator.AggregatorDashboard
+import com.example.fms.ui.screens.vet.VetDashboard
 import com.example.fms.ui.screens.WorkerDashboard
 import com.example.fms.ui.screens.auth.LoginScreen
 import com.example.fms.ui.screens.auth.OTPVerifyScreen
@@ -293,6 +294,7 @@ fun FMSApp(
                             )
                             UserRole.VETERINARIAN -> VetDashboard()
                             UserRole.AGGREGATOR -> AggregatorDashboard()
+                            UserRole.ADMIN -> AdminDashboard()
                         }
                     }
                     MainNavTab.HERD -> {

@@ -170,6 +170,7 @@ fun SettingsScreen(
                                                 UserRole.FARM_WORKER -> "Worker"
                                                 UserRole.VETERINARIAN -> "Vet"
                                                 UserRole.AGGREGATOR -> "Buyer"
+                                                UserRole.ADMIN -> "Admin"
                                             },
                                             fontSize = 12.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,13 +25,21 @@ import androidx.compose.ui.unit.sp
 import com.example.fms.ui.components.common.PillBadge
 import com.example.fms.ui.theme.*
 
+data class CommentItem(
+    val id: String,
+    val authorName: String,
+    val handle: String,
+    val text: String,
+    val timeAgo: String
+)
+
 data class TweetPost(
     val id: String,
     val name: String,
     val handle: String,
     val isVerified: Boolean = false,
     val locationTag: String,
-    val postCategory: String, // ALERT, PRICE, SURPLUS, DISCUSSION
+    val communityTag: String = "General Dairy",
     val content: String,
     val highlightData: String? = null,
     val timeAgo: String,
@@ -39,7 +48,8 @@ data class TweetPost(
     var replies: Int,
     var isLiked: Boolean = false,
     var isReposted: Boolean = false,
-    var isBookmarked: Boolean = false
+    var isBookmarked: Boolean = false,
+    val comments: List<CommentItem> = emptyList()
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,8 +57,28 @@ data class TweetPost(
 fun CommunityScreen(
     onOpenDirectMessage: (recipientName: String) -> Unit = {}
 ) {
-    var selectedFeedTab by remember { mutableIntStateOf(0) } // 0: For You, 1: County Alerts, 2: Milk Prices, 3: Surplus
-    var showComposer by remember { mutableStateOf(false) }
+    // Community circles available in the cooperative
+    var communities by remember {
+        mutableStateOf(
+            listOf(
+                "All Posts",
+                "General Dairy",
+                "Milk Prices & Aggregators",
+                "Disease & Vet Alerts",
+                "Breeding & Feeds"
+            )
+        )
+    }
+    var selectedCommunity by remember { mutableStateOf("All Posts") }
+    var showCreateCommunityDialog by remember { mutableStateOf(false) }
+
+    // Bottom sheet state for Compose Post Drawer
+    var showPostDrawer by remember { mutableStateOf(false) }
+    val postSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Bottom sheet state for Commenting Drawer
+    var activeCommentPost by remember { mutableStateOf<TweetPost?>(null) }
+    val commentSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var posts by remember {
         mutableStateOf(
@@ -59,14 +89,18 @@ fun CommunityScreen(
                     handle = "@kiprono_dvm",
                     isVerified = true,
                     locationTag = "Eldoret, Uasin Gishu",
-                    postCategory = "ALERT",
-                    content = "🚨 URGENT BIOSECURITY NOTICE: Foot & Mouth Disease (FMD) signs identified in southern pasturing corridors. Farmers: please pause inter-farm livestock trading, implement potassium permanganate wheel baths, and isolate any salivating cattle immediately.",
+                    communityTag = "Disease & Vet Alerts",
+                    content = "🚨 URGENT BIOSECURITY NOTICE: Foot & Mouth Disease (FMD) signs identified in southern pasturing corridors. Farmers: please pause inter-farm livestock trading, implement foot baths, and isolate any salivating cattle immediately.",
                     highlightData = "County Advisory • High Priority",
                     timeAgo = "18m",
                     likes = 89,
                     reposts = 34,
-                    replies = 15,
-                    isLiked = true
+                    replies = 2,
+                    isLiked = true,
+                    comments = listOf(
+                        CommentItem("c1", "Baraka Farm", "@baraka_farm", "Thank you Daktari! Are ring vaccinations currently stocked at the county sub-office?", "10m ago"),
+                        CommentItem("c2", "Faith Chepkemoi", "@chepkemoi_farms", "Good catch. We have locked entry gates for visitors at Nandi ridge.", "5m ago")
+                    )
                 ),
                 TweetPost(
                     id = "t2",
@@ -74,13 +108,16 @@ fun CommunityScreen(
                     handle = "@chepkemoi_farms",
                     isVerified = false,
                     locationTag = "Kapsabet, Nandi",
-                    postCategory = "SURPLUS",
+                    communityTag = "Milk Prices & Aggregators",
                     content = "Fresh Morning Yield: 380 Litres of Grade-A Friesian milk available for immediate aggregator bulk collection. Cooler temperature chilling at 3.8°C. Lactometer test reading 29.2. First come, first dispatch!",
                     highlightData = "🥛 380 Litres • KES 52.00 / Litre",
                     timeAgo = "1h",
                     likes = 45,
                     reposts = 12,
-                    replies = 8
+                    replies = 1,
+                    comments = listOf(
+                        CommentItem("c3", "Brookside Transporter", "@aggregator_rift", "Dispatch tanker is 15 mins away from your route, please reserve 200L.", "35m ago")
+                    )
                 ),
                 TweetPost(
                     id = "t3",
@@ -88,13 +125,13 @@ fun CommunityScreen(
                     handle = "@dairy_board_updates",
                     isVerified = true,
                     locationTag = "National • Spot Index",
-                    postCategory = "PRICE",
+                    communityTag = "Milk Prices & Aggregators",
                     content = "October 2026 Farmgate Benchmark: Rift Valley formal processor payout prices have adjusted upward by +KES 2.50 to KES 54.00 - 56.50/L for lactometer densities above 28. Cooperative deductions capped at KES 2.00.",
                     highlightData = "📈 Spot Price KES 54.00 - 56.50/L",
                     timeAgo = "3h",
                     likes = 142,
                     reposts = 58,
-                    replies = 24
+                    replies = 0
                 ),
                 TweetPost(
                     id = "t4",
@@ -102,24 +139,20 @@ fun CommunityScreen(
                     handle = "@ouma_dairy_ke",
                     isVerified = false,
                     locationTag = "Muhoroni, Kisumu",
-                    postCategory = "DISCUSSION",
+                    communityTag = "Breeding & Feeds",
                     content = "Silage compaction tip: Double-rolled yellow maize with 2% molasses spray dropped our spoilage waste down from 14% to under 2%. The cows finish their troughs completely without sorting.",
                     timeAgo = "5h",
                     likes = 31,
                     reposts = 6,
-                    replies = 11
+                    replies = 0
                 )
             )
         )
     }
 
-    val filteredPosts = remember(selectedFeedTab, posts) {
-        when (selectedFeedTab) {
-            1 -> posts.filter { it.postCategory == "ALERT" }
-            2 -> posts.filter { it.postCategory == "PRICE" }
-            3 -> posts.filter { it.postCategory == "SURPLUS" }
-            else -> posts
-        }
+    val filteredPosts = remember(selectedCommunity, posts) {
+        if (selectedCommunity == "All Posts") posts
+        else posts.filter { it.communityTag == selectedCommunity }
     }
 
     Scaffold(
@@ -157,7 +190,7 @@ fun CommunityScreen(
                     )
 
                     IconButton(
-                        onClick = { showComposer = true },
+                        onClick = { showPostDrawer = true },
                         modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
@@ -169,63 +202,48 @@ fun CommunityScreen(
                     }
                 }
 
-                // Twitter-style Sticky Tab Header
-                TabRow(
-                    selectedTabIndex = selectedFeedTab,
-                    containerColor = MaterialTheme.colorScheme.background,
-                    contentColor = EmeraldPrimary,
-                    divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)) }
+                // Community Filter Chips with Create Community Action
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Tab(
-                        selected = selectedFeedTab == 0,
-                        onClick = { selectedFeedTab = 0 },
-                        text = {
-                            Text(
-                                "For You",
-                                fontWeight = if (selectedFeedTab == 0) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 14.sp
-                            )
+                    item {
+                        // Create Community Button
+                        OutlinedButton(
+                            onClick = { showCreateCommunityDialog = true },
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("New Community", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
-                    )
-                    Tab(
-                        selected = selectedFeedTab == 1,
-                        onClick = { selectedFeedTab = 1 },
-                        text = {
-                            Text(
-                                "Alerts",
-                                fontWeight = if (selectedFeedTab == 1) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 14.sp
+                    }
+
+                    items(communities) { comm ->
+                        val isSelected = selectedCommunity == comm
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedCommunity = comm },
+                            label = { Text(comm, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                            shape = RoundedCornerShape(20.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldPrimary.copy(alpha = 0.15f),
+                                selectedLabelColor = EmeraldPrimary
                             )
-                        }
-                    )
-                    Tab(
-                        selected = selectedFeedTab == 2,
-                        onClick = { selectedFeedTab = 2 },
-                        text = {
-                            Text(
-                                "Prices",
-                                fontWeight = if (selectedFeedTab == 2) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 14.sp
-                            )
-                        }
-                    )
-                    Tab(
-                        selected = selectedFeedTab == 3,
-                        onClick = { selectedFeedTab = 3 },
-                        text = {
-                            Text(
-                                "Surplus",
-                                fontWeight = if (selectedFeedTab == 3) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 14.sp
-                            )
-                        }
-                    )
+                        )
+                    }
                 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
             }
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showComposer = true },
+                onClick = { showPostDrawer = true },
                 containerColor = EmeraldPrimary,
                 contentColor = Color.White,
                 shape = CircleShape,
@@ -244,6 +262,9 @@ fun CommunityScreen(
             items(filteredPosts, key = { it.id }) { post ->
                 TweetItem(
                     post = post,
+                    onCommentClick = {
+                        activeCommentPost = post
+                    },
                     onLikeToggle = {
                         posts = posts.map {
                             if (it.id == post.id) {
@@ -287,88 +308,292 @@ fun CommunityScreen(
         }
     }
 
-    // Twitter-style Modal Tweet Composer
-    if (showComposer) {
-        var composerText by remember { mutableStateOf("") }
-        var postCategorySelected by remember { mutableStateOf("DISCUSSION") }
+    // --- DRAWER-LIKE INPUT FOR NEW POST (Bottom Sheet Drawer) ---
+    if (showPostDrawer) {
+        ModalBottomSheet(
+            onDismissRequest = { showPostDrawer = false },
+            sheetState = postSheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            var composerText by remember { mutableStateOf("") }
+            var targetCommunity by remember {
+                mutableStateOf(
+                    if (selectedCommunity == "All Posts") "General Dairy" else selectedCommunity
+                )
+            }
 
-        AlertDialog(
-            onDismissRequest = { showComposer = false },
-            title = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Drawer Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Compose Post", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    PillBadge(
-                        text = postCategorySelected,
-                        containerColor = EmeraldPrimary.copy(alpha = 0.15f),
-                        contentColor = EmeraldPrimary
-                    )
+                    Text("New Community Post", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    IconButton(onClick = { showPostDrawer = false }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Close")
+                    }
                 }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+                // Community Selector
+                Text("Post into Community:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(communities.filter { it != "All Posts" }) { comm ->
                         FilterChip(
-                            selected = postCategorySelected == "DISCUSSION",
-                            onClick = { postCategorySelected = "DISCUSSION" },
-                            label = { Text("Discussion", fontSize = 11.sp) }
-                        )
-                        FilterChip(
-                            selected = postCategorySelected == "SURPLUS",
-                            onClick = { postCategorySelected = "SURPLUS" },
-                            label = { Text("Surplus", fontSize = 11.sp) }
-                        )
-                        FilterChip(
-                            selected = postCategorySelected == "PRICE",
-                            onClick = { postCategorySelected = "PRICE" },
-                            label = { Text("Price", fontSize = 11.sp) }
+                            selected = targetCommunity == comm,
+                            onClick = { targetCommunity = comm },
+                            label = { Text(comm, fontSize = 11.sp) },
+                            shape = RoundedCornerShape(16.dp)
                         )
                     }
+                }
 
+                // Drawer Input Field
+                OutlinedTextField(
+                    value = composerText,
+                    onValueChange = { composerText = it },
+                    placeholder = { Text("Share milk yields, questions, price updates, or farm tips...") },
+                    minLines = 4,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                )
+
+                // Bottom Post Action
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            if (composerText.isNotBlank()) {
+                                val newPost = TweetPost(
+                                    id = "t_${System.currentTimeMillis()}",
+                                    name = "Baraka Mark",
+                                    handle = "@baraka_farm",
+                                    isVerified = true,
+                                    locationTag = "Eldoret, Uasin Gishu",
+                                    communityTag = targetCommunity,
+                                    content = composerText,
+                                    timeAgo = "Just now",
+                                    likes = 1,
+                                    reposts = 0,
+                                    replies = 0
+                                )
+                                posts = listOf(newPost) + posts
+                            }
+                            showPostDrawer = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.height(44.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Post to Community", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    // --- COMMENTS DRAWER (Bottom Sheet) ---
+    activeCommentPost?.let { currentPost ->
+        ModalBottomSheet(
+            onDismissRequest = { activeCommentPost = null },
+            sheetState = commentSheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            var newCommentText by remember { mutableStateOf("") }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Replies (${currentPost.comments.size})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    )
+                    IconButton(onClick = { activeCommentPost = null }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Close")
+                    }
+                }
+
+                // Original Post Snippet
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "${currentPost.name} (${currentPost.handle})",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = currentPost.content,
+                            fontSize = 12.sp,
+                            maxLines = 2,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Existing Comments List
+                if (currentPost.comments.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 18.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No replies yet. Be the first to reply!", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 240.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(currentPost.comments, key = { it.id }) { c ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = EmeraldPrimary.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(30.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(c.authorName.take(1), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EmeraldPrimary)
+                                    }
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(c.authorName, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                        Text(c.timeAgo, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Text(c.text, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                // Reply Input Bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     OutlinedTextField(
-                        value = composerText,
-                        onValueChange = { composerText = it },
-                        placeholder = { Text("What's happening on your farm? (Milk yield, tips, price updates)...") },
-                        minLines = 4,
+                        value = newCommentText,
+                        onValueChange = { newCommentText = it },
+                        placeholder = { Text("Write a reply...", fontSize = 13.sp) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        singleLine = true
+                    )
+                    IconButton(
+                        onClick = {
+                            if (newCommentText.isNotBlank()) {
+                                val newComment = CommentItem(
+                                    id = "c_${System.currentTimeMillis()}",
+                                    authorName = "Baraka Mark",
+                                    handle = "@baraka_farm",
+                                    text = newCommentText,
+                                    timeAgo = "Just now"
+                                )
+                                posts = posts.map { p ->
+                                    if (p.id == currentPost.id) {
+                                        val updatedComments = p.comments + newComment
+                                        p.copy(
+                                            comments = updatedComments,
+                                            replies = updatedComments.size
+                                        )
+                                    } else p
+                                }
+                                activeCommentPost = activeCommentPost?.copy(
+                                    comments = (activeCommentPost?.comments ?: emptyList()) + newComment,
+                                    replies = (activeCommentPost?.replies ?: 0) + 1
+                                )
+                                newCommentText = ""
+                            }
+                        },
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = EmeraldPrimary, contentColor = Color.White),
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send Reply", modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+    }
+
+    // --- CREATE NEW COMMUNITY DIALOG ---
+    if (showCreateCommunityDialog) {
+        var newCommName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreateCommunityDialog = false },
+            title = { Text("Create Community", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Create a new topical space for local farmers, aggregators, or breeders:", fontSize = 13.sp)
+                    OutlinedTextField(
+                        value = newCommName,
+                        onValueChange = { newCommName = it },
+                        placeholder = { Text("e.g. Nandi Silage Group") },
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(12.dp)
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (composerText.isNotBlank()) {
-                            val newPost = TweetPost(
-                                id = "t_${System.currentTimeMillis()}",
-                                name = "Baraka Mark",
-                                handle = "@baraka_farm",
-                                isVerified = true,
-                                locationTag = "Eldoret, Uasin Gishu",
-                                postCategory = postCategorySelected,
-                                content = composerText,
-                                timeAgo = "Just now",
-                                likes = 1,
-                                reposts = 0,
-                                replies = 0
-                            )
-                            posts = listOf(newPost) + posts
+                        val trimmed = newCommName.trim()
+                        if (trimmed.isNotBlank() && !communities.contains(trimmed)) {
+                            communities = communities + trimmed
+                            selectedCommunity = trimmed
                         }
-                        showComposer = false
+                        showCreateCommunityDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(10.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
                 ) {
-                    Text("Post", fontWeight = FontWeight.Bold)
+                    Text("Create")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showComposer = false }) { Text("Cancel") }
+                TextButton(onClick = { showCreateCommunityDialog = false }) {
+                    Text("Cancel")
+                }
             },
-            shape = RoundedCornerShape(24.dp)
+            shape = RoundedCornerShape(20.dp)
         )
     }
 }
@@ -376,22 +601,16 @@ fun CommunityScreen(
 @Composable
 fun TweetItem(
     post: TweetPost,
+    onCommentClick: () -> Unit,
     onLikeToggle: () -> Unit,
     onRepostToggle: () -> Unit,
     onBookmarkToggle: () -> Unit,
     onDirectMessage: () -> Unit
 ) {
-    val categoryBadge = when (post.postCategory) {
-        "ALERT" -> Pair(RoseRed.copy(alpha = 0.15f), RoseRed)
-        "SURPLUS" -> Pair(SkyBlue.copy(alpha = 0.15f), SkyBlue)
-        "PRICE" -> Pair(GoldAmber.copy(alpha = 0.15f), GoldAmber)
-        else -> Pair(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable(onClick = onCommentClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -448,17 +667,16 @@ fun TweetItem(
                 )
             }
 
-            // Location Tag
-            Text(
-                text = "📍 ${post.locationTag}",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            // Community Tag Pill
+            Spacer(modifier = Modifier.height(3.dp))
+            PillBadge(
+                text = post.communityTag,
+                containerColor = ForestGreen.copy(alpha = 0.1f),
+                contentColor = ForestGreen
             )
 
+            // Post Content Text
             Spacer(modifier = Modifier.height(6.dp))
-
-            // Post Text
             Text(
                 text = post.content,
                 fontSize = 14.sp,
@@ -466,36 +684,35 @@ fun TweetItem(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // Special Highlight Chip (for Alerts, Surplus L/Price)
-            if (post.highlightData != null) {
+            // Optional Highlight Card (e.g. Alert or Surplus milk)
+            post.highlightData?.let { highlight ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = categoryBadge.first,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, categoryBadge.second.copy(alpha = 0.3f)),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = post.highlightData,
+                        text = highlight,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = categoryBadge.second,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Twitter Interaction Row (Reply, Retweet, Like, DM, Share)
+            // Bottom Interaction Bar (Replies, Reposts, Likes, Bookmark, DM)
+            Spacer(modifier = Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Reply
+                // Reply / Comment Button
                 Row(
-                    modifier = Modifier.clickable { },
+                    modifier = Modifier.clickable(onClick = onCommentClick),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(

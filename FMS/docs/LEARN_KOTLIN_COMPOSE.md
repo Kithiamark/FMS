@@ -399,3 +399,58 @@ ui/components/
 **Why this matters for your learning**:
 - When you want to change card shadows or corner radius, you only edit **one file** (`IslandCard.kt`). Every screen in the app updates automatically!
 - Each component takes parameters and a `content: @Composable () -> Unit` slot. This is known as **Slot API Architecture**.
+
+---
+
+## 11. Modal BottomSheet Drawers & Comment Threads
+
+Instead of rigid popups or dialogs that block the user's view, modern mobile apps use **sliding bottom sheet drawers** (`ModalBottomSheet` in Material 3).
+
+### How the Post Composer Drawer Works
+```kotlin
+var showPostDrawer by remember { mutableStateOf(false) }
+val postSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+if (showPostDrawer) {
+    ModalBottomSheet(
+        onDismissRequest = { showPostDrawer = false },
+        sheetState = postSheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        // Drawer Content: Community pills, Multiline TextField, and Send Button
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("New Community Post", fontWeight = FontWeight.Bold)
+            OutlinedTextField(value = text, onValueChange = { text = it })
+            Button(onClick = { /* submit post */ }) {
+                Text("Post to Community")
+            }
+        }
+    }
+}
+```
+
+### How Interactive Comment Drawers Work
+When a farmer taps on any tweet, we open a dedicated comment thread sheet populated by that post's list of `CommentItem`:
+```kotlin
+var activeCommentPost by remember { mutableStateOf<TweetPost?>(null) }
+
+activeCommentPost?.let { post ->
+    ModalBottomSheet(onDismissRequest = { activeCommentPost = null }) {
+        // 1. Shows original post snippet
+        // 2. Shows scrollable replies LazyColumn
+        // 3. Provides an instant reply input bar at the bottom
+    }
+}
+```
+
+---
+
+## 12. Role-Based Architecture (Admin, Vet, Aggregator, Farmer)
+
+FMS serves multiple ecosystem personas:
+1. **Farmer**: Daily milk yield, cow registry, biosecurity alerts, ledger.
+2. **Veterinarian (`ui/screens/vet/`)**: Clinical emergency triage, scheduled farm visits with GPS routing, and the **Milk Drug Withdrawal Reference** (preventing antibiotic residue from contaminating bulk tanks).
+3. **Aggregator / Buyer (`ui/screens/aggregator/`)**: Chilling cooler capacity progress, rapid lab testing (lactometer density, 68% alcohol test), and payout delivery slips.
+4. **Admin (`ui/screens/admin/`)**: Platform-wide KPIs across counties (Uasin Gishu, Nandi, Kiambu), audit logs, and cooperative emergency broadcasts.
+
+In `MainActivity.kt`, a single `when (activeRole)` statement dynamically renders the respective dashboard without needing separate APKs or complicated routing logic!

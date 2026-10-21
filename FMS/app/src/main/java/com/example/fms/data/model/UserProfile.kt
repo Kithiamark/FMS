@@ -4,7 +4,8 @@ enum class UserRole(val title: String, val badge: String) {
     FARMER("Farmer (Owner)", "Enterprise"),
     FARM_WORKER("Farm Worker", "Field Ops"),
     VETERINARIAN("Veterinarian", "Medical"),
-    AGGREGATOR("Milk Buyer", "Procurement")
+    AGGREGATOR("Milk Buyer", "Procurement"),
+    ADMIN("System Admin", "HQ / Ops")
 }
 
 data class DailyMilkSummary(
