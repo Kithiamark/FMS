@@ -28,6 +28,7 @@ import com.example.fms.ui.screens.finance.FinanceScreen
 import com.example.fms.ui.screens.herd.AnimalDetailScreen
 import com.example.fms.ui.screens.herd.HerdOverviewScreen
 import com.example.fms.ui.screens.vets.FindVetScreen
+import com.example.fms.ui.screens.worker.MilkingKeypadScreen
 import com.example.fms.ui.theme.FMSTheme
 
 enum class AppDestination {
@@ -40,7 +41,8 @@ enum class AppDestination {
     HERD_OVERVIEW,
     ANIMAL_DETAIL,
     FINANCE,
-    FIND_VET
+    FIND_VET,
+    WORKER_KEYPAD
 }
 
 class MainActivity : ComponentActivity() {
@@ -139,6 +141,9 @@ fun AppRootNavigation() {
                     onNavigateToFindVet = {
                         currentDestination = AppDestination.FIND_VET
                     },
+                    onNavigateToWorkerKeypad = {
+                        currentDestination = AppDestination.WORKER_KEYPAD
+                    },
                     onLogout = {
                         currentDestination = AppDestination.LOGIN
                     }
@@ -191,6 +196,13 @@ fun AppRootNavigation() {
                     }
                 )
             }
+            AppDestination.WORKER_KEYPAD -> {
+                MilkingKeypadScreen(
+                    onBackClick = {
+                        currentDestination = AppDestination.MAIN_APP
+                    }
+                )
+            }
         }
     }
 }
@@ -202,6 +214,7 @@ fun FMSApp(
     onNavigateToHerd: () -> Unit = {},
     onNavigateToFinance: () -> Unit = {},
     onNavigateToFindVet: () -> Unit = {},
+    onNavigateToWorkerKeypad: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var activeRole by remember { mutableStateOf(initialRole) }
@@ -245,7 +258,7 @@ fun FMSApp(
                         onNavigateToFinance = onNavigateToFinance
                     )
                     UserRole.FARM_WORKER -> WorkerDashboard(
-                        onNavigateToMilkLog = onNavigateToMilkEntry
+                        onNavigateToMilkLog = onNavigateToWorkerKeypad
                     )
                     UserRole.VETERINARIAN -> VetDashboard()
                     UserRole.AGGREGATOR -> AggregatorDashboard()
