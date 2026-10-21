@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,7 +27,8 @@ import com.example.fms.ui.theme.*
 @Composable
 fun FarmerDashboard(
     onNavigateToRecordMilk: () -> Unit = {},
-    onNavigateToHerd: () -> Unit = {}
+    onNavigateToHerd: () -> Unit = {},
+    onNavigateToFinance: () -> Unit = {}
 ) {
     var milkSummary by remember {
         mutableStateOf(
@@ -182,10 +184,10 @@ fun FarmerDashboard(
                     )
                     QuickActionButton(
                         title = "Expense",
-                        icon = Icons.Rounded.ReceiptLong,
+                        icon = Icons.AutoMirrored.Rounded.ReceiptLong,
                         color = GoldAmber,
                         modifier = Modifier.weight(1f),
-                        onClick = { }
+                        onClick = onNavigateToFinance
                     )
                 }
             }

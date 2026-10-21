@@ -24,6 +24,7 @@ import com.example.fms.ui.screens.auth.OTPVerifyScreen
 import com.example.fms.ui.screens.auth.RegisterScreen
 import com.example.fms.ui.screens.auth.SplashScreen
 import com.example.fms.ui.screens.farmer.DailyMilkEntryScreen
+import com.example.fms.ui.screens.finance.FinanceScreen
 import com.example.fms.ui.screens.herd.AnimalDetailScreen
 import com.example.fms.ui.screens.herd.HerdOverviewScreen
 import com.example.fms.ui.theme.FMSTheme
@@ -36,7 +37,8 @@ enum class AppDestination {
     MAIN_APP,
     DAILY_MILK_ENTRY,
     HERD_OVERVIEW,
-    ANIMAL_DETAIL
+    ANIMAL_DETAIL,
+    FINANCE
 }
 
 class MainActivity : ComponentActivity() {
@@ -129,6 +131,9 @@ fun AppRootNavigation() {
                     onNavigateToHerd = {
                         currentDestination = AppDestination.HERD_OVERVIEW
                     },
+                    onNavigateToFinance = {
+                        currentDestination = AppDestination.FINANCE
+                    },
                     onLogout = {
                         currentDestination = AppDestination.LOGIN
                     }
@@ -165,6 +170,13 @@ fun AppRootNavigation() {
                     onLogMedicalEvent = {}
                 )
             }
+            AppDestination.FINANCE -> {
+                FinanceScreen(
+                    onBackClick = {
+                        currentDestination = AppDestination.MAIN_APP
+                    }
+                )
+            }
         }
     }
 }
@@ -174,6 +186,7 @@ fun FMSApp(
     initialRole: UserRole = UserRole.FARMER,
     onNavigateToMilkEntry: () -> Unit = {},
     onNavigateToHerd: () -> Unit = {},
+    onNavigateToFinance: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var activeRole by remember { mutableStateOf(initialRole) }
@@ -213,7 +226,8 @@ fun FMSApp(
                 when (role) {
                     UserRole.FARMER -> FarmerDashboard(
                         onNavigateToRecordMilk = onNavigateToMilkEntry,
-                        onNavigateToHerd = onNavigateToHerd
+                        onNavigateToHerd = onNavigateToHerd,
+                        onNavigateToFinance = onNavigateToFinance
                     )
                     UserRole.FARM_WORKER -> WorkerDashboard(
                         onNavigateToMilkLog = onNavigateToMilkEntry
