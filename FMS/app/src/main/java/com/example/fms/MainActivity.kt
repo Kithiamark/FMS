@@ -24,6 +24,8 @@ import com.example.fms.ui.screens.auth.LoginScreen
 import com.example.fms.ui.screens.auth.OTPVerifyScreen
 import com.example.fms.ui.screens.auth.RegisterScreen
 import com.example.fms.ui.screens.auth.SplashScreen
+import com.example.fms.ui.screens.chat.ChatScreen
+import com.example.fms.ui.screens.community.CommunityScreen
 import com.example.fms.ui.screens.farmer.DailyMilkEntryScreen
 import com.example.fms.ui.screens.finance.FinanceScreen
 import com.example.fms.ui.screens.herd.AnimalDetailScreen
@@ -44,13 +46,15 @@ enum class AppDestination {
     ANIMAL_DETAIL,
     FINANCE,
     FIND_VET,
-    WORKER_KEYPAD
+    WORKER_KEYPAD,
+    DIRECT_MESSAGE
 }
 
 enum class MainNavTab {
     DASHBOARD,
     HERD,
-    FINANCE,
+    COMMUNITY,
+    MESSAGES,
     SETTINGS
 }
 
@@ -73,6 +77,7 @@ fun AppRootNavigation() {
     var pendingPhoneOrEmail by remember { mutableStateOf("+254 712 345 678") }
     var otpReason by remember { mutableStateOf("Login Authorization") }
     var selectedAnimal by remember { mutableStateOf<CattleRecord?>(null) }
+    var directMessageRecipient by remember { mutableStateOf<String?>(null) }
 
     AnimatedContent(
         targetState = currentDestination,
@@ -154,6 +159,10 @@ fun AppRootNavigation() {
                     onNavigateToWorkerKeypad = {
                         currentDestination = AppDestination.WORKER_KEYPAD
                     },
+                    onOpenDirectMessage = { recipient ->
+                        directMessageRecipient = recipient
+                        currentDestination = AppDestination.DIRECT_MESSAGE
+                    },
                     onLogout = {
                         currentDestination = AppDestination.LOGIN
                     }
@@ -213,6 +222,14 @@ fun AppRootNavigation() {
                     }
                 )
             }
+            AppDestination.DIRECT_MESSAGE -> {
+                ChatScreen(
+                    initialRecipient = directMessageRecipient,
+                    onBackClick = {
+                        currentDestination = AppDestination.MAIN_APP
+                    }
+                )
+            }
         }
     }
 }
@@ -226,16 +243,17 @@ fun FMSApp(
     onNavigateToFinance: () -> Unit = {},
     onNavigateToFindVet: () -> Unit = {},
     onNavigateToWorkerKeypad: () -> Unit = {},
+    onOpenDirectMessage: (String) -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var selectedNavTab by remember { mutableStateOf(MainNavTab.DASHBOARD) }
 
-    // Bottom Navigation Items across the core app pages
     val bottomNavItems = listOf(
-        BottomNavItem(MainNavTab.DASHBOARD.name, "Dashboard", Icons.Rounded.Dashboard),
+        BottomNavItem(MainNavTab.DASHBOARD.name, "Home", Icons.Rounded.Dashboard),
         BottomNavItem(MainNavTab.HERD.name, "Herd", Icons.Rounded.Pets),
-        BottomNavItem(MainNavTab.FINANCE.name, "Finance", Icons.AutoMirrored.Rounded.ReceiptLong),
-        BottomNavItem(MainNavTab.SETTINGS.name, "Settings", Icons.Rounded.Settings)
+        BottomNavItem(MainNavTab.COMMUNITY.name, "Feed", Icons.Rounded.Forum),
+        BottomNavItem(MainNavTab.MESSAGES.name, "Chat", Icons.Rounded.ChatBubble, badgeCount = 1),
+        BottomNavItem(MainNavTab.SETTINGS.name, "More", Icons.Rounded.Settings)
     )
 
     Scaffold(
@@ -265,7 +283,6 @@ fun FMSApp(
             ) { tab ->
                 when (tab) {
                     MainNavTab.DASHBOARD -> {
-                        // Role-adaptive dashboard based on currently active persona
                         when (activeRole) {
                             UserRole.FARMER -> FarmerDashboard(
                                 onNavigateToRecordMilk = onNavigateToMilkEntry,
@@ -287,10 +304,13 @@ fun FMSApp(
                             }
                         )
                     }
-                    MainNavTab.FINANCE -> {
-                        FinanceScreen(
-                            onBackClick = { selectedNavTab = MainNavTab.DASHBOARD }
+                    MainNavTab.COMMUNITY -> {
+                        CommunityScreen(
+                            onOpenDirectMessage = onOpenDirectMessage
                         )
+                    }
+                    MainNavTab.MESSAGES -> {
+                        ChatScreen()
                     }
                     MainNavTab.SETTINGS -> {
                         SettingsScreen(
