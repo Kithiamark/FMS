@@ -482,3 +482,19 @@ fun WorkerChoreItem(
         }
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Worker Dashboard Light")
+@Composable
+fun WorkerDashboardPreview() {
+    FMSTheme(darkTheme = false) {
+        WorkerDashboard()
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Worker Dashboard Dark")
+@Composable
+fun WorkerDashboardDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        WorkerDashboard()
+    }
+}

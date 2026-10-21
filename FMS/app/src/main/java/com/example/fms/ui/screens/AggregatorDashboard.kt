@@ -451,3 +451,19 @@ fun MilkBatchItem(
         }
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Aggregator Dashboard Light")
+@Composable
+fun AggregatorDashboardPreview() {
+    FMSTheme(darkTheme = false) {
+        AggregatorDashboard()
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Aggregator Dashboard Dark")
+@Composable
+fun AggregatorDashboardDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        AggregatorDashboard()
+    }
+}

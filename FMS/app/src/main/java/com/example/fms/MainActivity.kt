@@ -169,3 +169,19 @@ fun RoleTabPill(
         )
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "FMS App Main Light")
+@Composable
+fun FMSAppPreview() {
+    FMSTheme(darkTheme = false) {
+        FMSApp()
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "FMS App Main Dark")
+@Composable
+fun FMSAppDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        FMSApp()
+    }
+}

@@ -408,3 +408,19 @@ fun QuickActionButton(
         }
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Farmer Dashboard Light")
+@Composable
+fun FarmerDashboardPreview() {
+    FMSTheme(darkTheme = false) {
+        FarmerDashboard()
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Farmer Dashboard Dark")
+@Composable
+fun FarmerDashboardDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        FarmerDashboard()
+    }
+}

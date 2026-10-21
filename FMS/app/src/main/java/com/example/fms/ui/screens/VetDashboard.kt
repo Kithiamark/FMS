@@ -417,3 +417,19 @@ fun VetInquiryCard(
         }
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Vet Dashboard Light")
+@Composable
+fun VetDashboardPreview() {
+    FMSTheme(darkTheme = false) {
+        VetDashboard()
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Vet Dashboard Dark")
+@Composable
+fun VetDashboardDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        VetDashboard()
+    }
+}
