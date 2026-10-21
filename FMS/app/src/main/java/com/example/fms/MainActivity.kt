@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +28,7 @@ import com.example.fms.ui.screens.farmer.DailyMilkEntryScreen
 import com.example.fms.ui.screens.finance.FinanceScreen
 import com.example.fms.ui.screens.herd.AnimalDetailScreen
 import com.example.fms.ui.screens.herd.HerdOverviewScreen
+import com.example.fms.ui.screens.settings.SettingsScreen
 import com.example.fms.ui.screens.vets.FindVetScreen
 import com.example.fms.ui.screens.worker.MilkingKeypadScreen
 import com.example.fms.ui.theme.FMSTheme
@@ -43,6 +45,13 @@ enum class AppDestination {
     FINANCE,
     FIND_VET,
     WORKER_KEYPAD
+}
+
+enum class MainNavTab {
+    DASHBOARD,
+    HERD,
+    FINANCE,
+    SETTINGS
 }
 
 class MainActivity : ComponentActivity() {
@@ -128,7 +137,8 @@ fun AppRootNavigation() {
             }
             AppDestination.MAIN_APP -> {
                 FMSApp(
-                    initialRole = activeRole,
+                    activeRole = activeRole,
+                    onRoleChanged = { activeRole = it },
                     onNavigateToMilkEntry = {
                         currentDestination = AppDestination.DAILY_MILK_ENTRY
                     },
@@ -209,7 +219,8 @@ fun AppRootNavigation() {
 
 @Composable
 fun FMSApp(
-    initialRole: UserRole = UserRole.FARMER,
+    activeRole: UserRole = UserRole.FARMER,
+    onRoleChanged: (UserRole) -> Unit = {},
     onNavigateToMilkEntry: () -> Unit = {},
     onNavigateToHerd: () -> Unit = {},
     onNavigateToFinance: () -> Unit = {},
@@ -217,13 +228,14 @@ fun FMSApp(
     onNavigateToWorkerKeypad: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
-    var activeRole by remember { mutableStateOf(initialRole) }
+    var selectedNavTab by remember { mutableStateOf(MainNavTab.DASHBOARD) }
 
+    // Bottom Navigation Items across the core app pages
     val bottomNavItems = listOf(
-        BottomNavItem(UserRole.FARMER.name, "Farmer", Icons.Rounded.Agriculture),
-        BottomNavItem(UserRole.FARM_WORKER.name, "Worker", Icons.Rounded.Engineering),
-        BottomNavItem(UserRole.VETERINARIAN.name, "Vet", Icons.Rounded.MedicalServices),
-        BottomNavItem(UserRole.AGGREGATOR.name, "Buyer", Icons.Rounded.Storefront)
+        BottomNavItem(MainNavTab.DASHBOARD.name, "Dashboard", Icons.Rounded.Dashboard),
+        BottomNavItem(MainNavTab.HERD.name, "Herd", Icons.Rounded.Pets),
+        BottomNavItem(MainNavTab.FINANCE.name, "Finance", Icons.AutoMirrored.Rounded.ReceiptLong),
+        BottomNavItem(MainNavTab.SETTINGS.name, "Settings", Icons.Rounded.Settings)
     )
 
     Scaffold(
@@ -231,9 +243,9 @@ fun FMSApp(
         bottomBar = {
             IslandBottomBar(
                 items = bottomNavItems,
-                selectedId = activeRole.name,
+                selectedId = selectedNavTab.name,
                 onItemSelected = { selectedName ->
-                    activeRole = UserRole.valueOf(selectedName)
+                    selectedNavTab = MainNavTab.valueOf(selectedName)
                 }
             )
         }
@@ -244,24 +256,51 @@ fun FMSApp(
                 .padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             AnimatedContent(
-                targetState = activeRole,
+                targetState = selectedNavTab,
                 transitionSpec = {
                     fadeIn() + slideInVertically { it / 6 } togetherWith
                             fadeOut() + slideOutVertically { -it / 6 }
                 },
-                label = "RoleDashboardAnimation"
-            ) { role ->
-                when (role) {
-                    UserRole.FARMER -> FarmerDashboard(
-                        onNavigateToRecordMilk = onNavigateToMilkEntry,
-                        onNavigateToHerd = onNavigateToHerd,
-                        onNavigateToFinance = onNavigateToFinance
-                    )
-                    UserRole.FARM_WORKER -> WorkerDashboard(
-                        onNavigateToMilkLog = onNavigateToWorkerKeypad
-                    )
-                    UserRole.VETERINARIAN -> VetDashboard()
-                    UserRole.AGGREGATOR -> AggregatorDashboard()
+                label = "MainTabAnimation"
+            ) { tab ->
+                when (tab) {
+                    MainNavTab.DASHBOARD -> {
+                        // Role-adaptive dashboard based on currently active persona
+                        when (activeRole) {
+                            UserRole.FARMER -> FarmerDashboard(
+                                onNavigateToRecordMilk = onNavigateToMilkEntry,
+                                onNavigateToHerd = onNavigateToHerd,
+                                onNavigateToFinance = onNavigateToFinance
+                            )
+                            UserRole.FARM_WORKER -> WorkerDashboard(
+                                onNavigateToMilkLog = onNavigateToWorkerKeypad
+                            )
+                            UserRole.VETERINARIAN -> VetDashboard()
+                            UserRole.AGGREGATOR -> AggregatorDashboard()
+                        }
+                    }
+                    MainNavTab.HERD -> {
+                        HerdOverviewScreen(
+                            onBackClick = { selectedNavTab = MainNavTab.DASHBOARD },
+                            onAnimalSelected = { cow ->
+                                onNavigateToHerd()
+                            }
+                        )
+                    }
+                    MainNavTab.FINANCE -> {
+                        FinanceScreen(
+                            onBackClick = { selectedNavTab = MainNavTab.DASHBOARD }
+                        )
+                    }
+                    MainNavTab.SETTINGS -> {
+                        SettingsScreen(
+                            currentRole = activeRole,
+                            onRoleChanged = { newRole ->
+                                onRoleChanged(newRole)
+                            },
+                            onLogoutClick = onLogout
+                        )
+                    }
                 }
             }
         }
