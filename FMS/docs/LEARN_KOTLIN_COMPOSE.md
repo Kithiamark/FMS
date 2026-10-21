@@ -454,3 +454,58 @@ FMS serves multiple ecosystem personas:
 4. **Admin (`ui/screens/admin/`)**: Platform-wide KPIs across counties (Uasin Gishu, Nandi, Kiambu), audit logs, and cooperative emergency broadcasts.
 
 In `MainActivity.kt`, a single `when (activeRole)` statement dynamically renders the respective dashboard without needing separate APKs or complicated routing logic!
+
+---
+
+## 13. Persistent, Role-Adaptive Navigation & Screen Shells
+
+A critical UX pattern in mobile design is ensuring that **the user never feels lost in the app**. When sub-screens hide the bottom navigation bar completely, users lose their spatial orientation.
+
+### How the Universal Navigation Shell Works:
+In `MainActivity.kt`, the `MainAppShell` hosts both top-level dashboards and secondary sub-destinations (like `DAILY_MILK_ENTRY` or `ANIMAL_DETAIL`) inside the same `Scaffold`:
+
+```kotlin
+Scaffold(
+    bottomBar = {
+        IslandBottomBar(
+            items = bottomNavItems, // Adapts to activeRole!
+            selectedId = selectedNavTab.name,
+            onItemSelected = { selectedName ->
+                selectedNavTab = MainNavTab.valueOf(selectedName)
+                if (currentSubDestination != AppDestination.MAIN_APP) {
+                    onNavigateTo(AppDestination.MAIN_APP)
+                }
+            }
+        )
+    }
+) { innerPadding ->
+    // Sub-screens and main tabs are both hosted here!
+}
+```
+
+### Role-Adaptive Secondary Tab Items:
+The second tab item dynamically mirrors the primary tool for each role (matching the web app routes):
+- **Farmer**: `Herd` (`Icons.Rounded.Pets`)
+- **Worker**: `Keypad` (`Icons.Rounded.Dialpad`)
+- **Veterinarian**: `Records` (`Icons.Rounded.Assignment`)
+- **Aggregator**: `Network` (`Icons.Rounded.Hub`)
+- **Admin**: `Farms` (`Icons.Rounded.Domain`)
+
+---
+
+## 14. Sticky Smoothly Compressing Hero Headers
+
+Headers in dairy apps often contain rich context (Farm Name, Enterprise Plan, Notification bell). However, as the user scrolls through lists of cows or batches, a large header steals screen space.
+
+We solved this in `HeroHeader` using `animateDpAsState` and scroll progress:
+```kotlin
+val collapseFraction = (scrollOffset / maxScrollOffset).coerceIn(0f, 1f)
+
+val animatedPaddingTop by animateDpAsState(
+    targetValue = if (collapseFraction > 0.5f) 24.dp else 40.dp
+)
+val animatedCornerRadius by animateDpAsState(
+    targetValue = if (collapseFraction > 0.5f) 16.dp else 32.dp
+)
+```
+When scrolled, the header smoothly shrinks its padding, tightens its corner curvature, and scales the title font while keeping the notification icon and status readily accessible.
