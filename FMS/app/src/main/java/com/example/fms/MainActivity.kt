@@ -11,6 +11,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.example.fms.data.model.CattleRecord
 import com.example.fms.data.model.UserRole
 import com.example.fms.ui.components.BottomNavItem
 import com.example.fms.ui.components.IslandBottomBar
@@ -23,6 +24,8 @@ import com.example.fms.ui.screens.auth.OTPVerifyScreen
 import com.example.fms.ui.screens.auth.RegisterScreen
 import com.example.fms.ui.screens.auth.SplashScreen
 import com.example.fms.ui.screens.farmer.DailyMilkEntryScreen
+import com.example.fms.ui.screens.herd.AnimalDetailScreen
+import com.example.fms.ui.screens.herd.HerdOverviewScreen
 import com.example.fms.ui.theme.FMSTheme
 
 enum class AppDestination {
@@ -31,7 +34,9 @@ enum class AppDestination {
     REGISTER,
     OTP_VERIFY,
     MAIN_APP,
-    DAILY_MILK_ENTRY
+    DAILY_MILK_ENTRY,
+    HERD_OVERVIEW,
+    ANIMAL_DETAIL
 }
 
 class MainActivity : ComponentActivity() {
@@ -52,6 +57,7 @@ fun AppRootNavigation() {
     var activeRole by remember { mutableStateOf(UserRole.FARMER) }
     var pendingPhoneOrEmail by remember { mutableStateOf("+254 712 345 678") }
     var otpReason by remember { mutableStateOf("Login Authorization") }
+    var selectedAnimal by remember { mutableStateOf<CattleRecord?>(null) }
 
     AnimatedContent(
         targetState = currentDestination,
@@ -120,6 +126,9 @@ fun AppRootNavigation() {
                     onNavigateToMilkEntry = {
                         currentDestination = AppDestination.DAILY_MILK_ENTRY
                     },
+                    onNavigateToHerd = {
+                        currentDestination = AppDestination.HERD_OVERVIEW
+                    },
                     onLogout = {
                         currentDestination = AppDestination.LOGIN
                     }
@@ -135,6 +144,27 @@ fun AppRootNavigation() {
                     }
                 )
             }
+            AppDestination.HERD_OVERVIEW -> {
+                HerdOverviewScreen(
+                    onBackClick = {
+                        currentDestination = AppDestination.MAIN_APP
+                    },
+                    onAnimalSelected = { cow ->
+                        selectedAnimal = cow
+                        currentDestination = AppDestination.ANIMAL_DETAIL
+                    },
+                    onAddAnimalClick = {}
+                )
+            }
+            AppDestination.ANIMAL_DETAIL -> {
+                AnimalDetailScreen(
+                    cow = selectedAnimal ?: CattleRecord("1", "#104", "Bessie", "Friesian", "Healthy", 25.5),
+                    onBackClick = {
+                        currentDestination = AppDestination.HERD_OVERVIEW
+                    },
+                    onLogMedicalEvent = {}
+                )
+            }
         }
     }
 }
@@ -143,6 +173,7 @@ fun AppRootNavigation() {
 fun FMSApp(
     initialRole: UserRole = UserRole.FARMER,
     onNavigateToMilkEntry: () -> Unit = {},
+    onNavigateToHerd: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var activeRole by remember { mutableStateOf(initialRole) }
@@ -181,7 +212,8 @@ fun FMSApp(
             ) { role ->
                 when (role) {
                     UserRole.FARMER -> FarmerDashboard(
-                        onNavigateToRecordMilk = onNavigateToMilkEntry
+                        onNavigateToRecordMilk = onNavigateToMilkEntry,
+                        onNavigateToHerd = onNavigateToHerd
                     )
                     UserRole.FARM_WORKER -> WorkerDashboard(
                         onNavigateToMilkLog = onNavigateToMilkEntry
