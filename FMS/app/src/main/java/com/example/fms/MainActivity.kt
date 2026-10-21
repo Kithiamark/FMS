@@ -5,32 +5,32 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.fms.data.model.UserRole
+import com.example.fms.ui.components.BottomNavItem
+import com.example.fms.ui.components.IslandBottomBar
 import com.example.fms.ui.screens.AggregatorDashboard
 import com.example.fms.ui.screens.FarmerDashboard
 import com.example.fms.ui.screens.VetDashboard
 import com.example.fms.ui.screens.WorkerDashboard
-import com.example.fms.ui.theme.EmeraldPrimary
+import com.example.fms.ui.screens.auth.LoginScreen
+import com.example.fms.ui.screens.auth.OTPVerifyScreen
+import com.example.fms.ui.screens.auth.RegisterScreen
+import com.example.fms.ui.screens.auth.SplashScreen
 import com.example.fms.ui.theme.FMSTheme
+
+enum class AppDestination {
+    SPLASH,
+    LOGIN,
+    REGISTER,
+    OTP_VERIFY,
+    MAIN_APP
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,22 +38,115 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FMSTheme {
-                FMSApp()
+                AppRootNavigation()
             }
         }
     }
 }
 
 @Composable
-fun FMSApp() {
+fun AppRootNavigation() {
+    var currentDestination by remember { mutableStateOf(AppDestination.SPLASH) }
     var activeRole by remember { mutableStateOf(UserRole.FARMER) }
+    var pendingPhoneOrEmail by remember { mutableStateOf("+254 712 345 678") }
+    var otpReason by remember { mutableStateOf("Login Authorization") }
+
+    AnimatedContent(
+        targetState = currentDestination,
+        transitionSpec = {
+            fadeIn() togetherWith fadeOut()
+        },
+        label = "AppRootNavigation"
+    ) { destination ->
+        when (destination) {
+            AppDestination.SPLASH -> {
+                SplashScreen(
+                    onSplashFinished = {
+                        currentDestination = AppDestination.LOGIN
+                    }
+                )
+            }
+            AppDestination.LOGIN -> {
+                LoginScreen(
+                    onLoginSuccess = { phone, role ->
+                        pendingPhoneOrEmail = phone
+                        otpReason = "Sign In Security Verification"
+                        currentDestination = AppDestination.OTP_VERIFY
+                    },
+                    onNavigateToRegister = {
+                        currentDestination = AppDestination.REGISTER
+                    },
+                    onForgotPassword = {
+                        pendingPhoneOrEmail = "your registered phone"
+                        otpReason = "Password Reset"
+                        currentDestination = AppDestination.OTP_VERIFY
+                    }
+                )
+            }
+            AppDestination.REGISTER -> {
+                RegisterScreen(
+                    onRegisterSuccess = { phone, role ->
+                        pendingPhoneOrEmail = phone
+                        activeRole = role
+                        otpReason = "New Account Activation"
+                        currentDestination = AppDestination.OTP_VERIFY
+                    },
+                    onNavigateToLogin = {
+                        currentDestination = AppDestination.LOGIN
+                    },
+                    onBackClick = {
+                        currentDestination = AppDestination.LOGIN
+                    }
+                )
+            }
+            AppDestination.OTP_VERIFY -> {
+                OTPVerifyScreen(
+                    phoneNumberOrEmail = pendingPhoneOrEmail,
+                    reason = otpReason,
+                    onOtpVerified = { code ->
+                        currentDestination = AppDestination.MAIN_APP
+                    },
+                    onResendOtp = {},
+                    onBackClick = {
+                        currentDestination = AppDestination.LOGIN
+                    }
+                )
+            }
+            AppDestination.MAIN_APP -> {
+                FMSApp(
+                    initialRole = activeRole,
+                    onLogout = {
+                        currentDestination = AppDestination.LOGIN
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FMSApp(
+    initialRole: UserRole = UserRole.FARMER,
+    onLogout: () -> Unit = {}
+) {
+    var activeRole by remember { mutableStateOf(initialRole) }
+
+    val bottomNavItems = listOf(
+        BottomNavItem(UserRole.FARMER.name, "Farmer", Icons.Rounded.Agriculture),
+        BottomNavItem(UserRole.FARM_WORKER.name, "Worker", Icons.Rounded.Engineering),
+        BottomNavItem(UserRole.VETERINARIAN.name, "Vet", Icons.Rounded.MedicalServices),
+        BottomNavItem(UserRole.AGGREGATOR.name, "Buyer", Icons.Rounded.Storefront)
+    )
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            RoleSwitcherFloatingPill(
-                selectedRole = activeRole,
-                onRoleSelected = { activeRole = it }
+            IslandBottomBar(
+                items = bottomNavItems,
+                selectedId = activeRole.name,
+                onItemSelected = { selectedName ->
+                    activeRole = UserRole.valueOf(selectedName)
+                }
             )
         }
     ) { innerPadding ->
@@ -78,95 +171,6 @@ fun FMSApp() {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun RoleSwitcherFloatingPill(
-    selectedRole: UserRole,
-    onRoleSelected: (UserRole) -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-            .navigationBarsPadding(),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-        tonalElevation = 8.dp,
-        shadowElevation = 12.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 6.dp)
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            RoleTabPill(
-                title = "Farmer",
-                icon = Icons.Rounded.Agriculture,
-                isSelected = selectedRole == UserRole.FARMER,
-                onClick = { onRoleSelected(UserRole.FARMER) }
-            )
-            RoleTabPill(
-                title = "Worker",
-                icon = Icons.Rounded.Engineering,
-                isSelected = selectedRole == UserRole.FARM_WORKER,
-                onClick = { onRoleSelected(UserRole.FARM_WORKER) }
-            )
-            RoleTabPill(
-                title = "Vet",
-                icon = Icons.Rounded.MedicalServices,
-                isSelected = selectedRole == UserRole.VETERINARIAN,
-                onClick = { onRoleSelected(UserRole.VETERINARIAN) }
-            )
-            RoleTabPill(
-                title = "Buyer",
-                icon = Icons.Rounded.Storefront,
-                isSelected = selectedRole == UserRole.AGGREGATOR,
-                onClick = { onRoleSelected(UserRole.AGGREGATOR) }
-            )
-        }
-    }
-}
-
-@Composable
-fun RoleTabPill(
-    title: String,
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val bg = if (isSelected) EmeraldPrimary else Color.Transparent
-    val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(bg)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            tint = contentColor,
-            modifier = Modifier.size(17.dp)
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = title,
-            color = contentColor,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            fontSize = 13.sp
-        )
     }
 }
 

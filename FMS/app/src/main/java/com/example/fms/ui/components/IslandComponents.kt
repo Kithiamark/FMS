@@ -190,3 +190,129 @@ fun HeroHeader(
         }
     }
 }
+
+/**
+ * Reusable Floating Bottom Navigation Bar (Island Style)
+ */
+data class BottomNavItem(
+    val id: String,
+    val title: String,
+    val icon: ImageVector,
+    val badgeCount: Int = 0
+)
+
+@Composable
+fun IslandBottomBar(
+    items: List<BottomNavItem>,
+    selectedId: String,
+    onItemSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .navigationBarsPadding(),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 8.dp,
+        shadowElevation = 14.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { item ->
+                val isSelected = item.id == selectedId
+                val bg = if (isSelected) EmeraldPrimary else Color.Transparent
+                val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(bg)
+                        .clickable { onItemSelected(item.id) }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = item.title,
+                        tint = contentColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    if (isSelected) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = item.title,
+                            color = contentColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Reusable Primary Island Button
+ */
+@Composable
+fun IslandButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    icon: ImageVector? = null,
+    containerColor: Color = EmeraldPrimary,
+    contentColor: Color = Color.White
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled && !isLoading,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = containerColor.copy(alpha = 0.5f)
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                color = contentColor,
+                strokeWidth = 2.5.dp,
+                modifier = Modifier.size(22.dp)
+            )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (icon != null) {
+                    Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(
+                    text = text,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.3.sp
+                )
+            }
+        }
+    }
+}
