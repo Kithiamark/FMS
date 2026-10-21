@@ -22,6 +22,7 @@ import com.example.fms.ui.screens.auth.LoginScreen
 import com.example.fms.ui.screens.auth.OTPVerifyScreen
 import com.example.fms.ui.screens.auth.RegisterScreen
 import com.example.fms.ui.screens.auth.SplashScreen
+import com.example.fms.ui.screens.farmer.DailyMilkEntryScreen
 import com.example.fms.ui.theme.FMSTheme
 
 enum class AppDestination {
@@ -29,7 +30,8 @@ enum class AppDestination {
     LOGIN,
     REGISTER,
     OTP_VERIFY,
-    MAIN_APP
+    MAIN_APP,
+    DAILY_MILK_ENTRY
 }
 
 class MainActivity : ComponentActivity() {
@@ -115,8 +117,21 @@ fun AppRootNavigation() {
             AppDestination.MAIN_APP -> {
                 FMSApp(
                     initialRole = activeRole,
+                    onNavigateToMilkEntry = {
+                        currentDestination = AppDestination.DAILY_MILK_ENTRY
+                    },
                     onLogout = {
                         currentDestination = AppDestination.LOGIN
+                    }
+                )
+            }
+            AppDestination.DAILY_MILK_ENTRY -> {
+                DailyMilkEntryScreen(
+                    onBackClick = {
+                        currentDestination = AppDestination.MAIN_APP
+                    },
+                    onSubmitSuccess = {
+                        currentDestination = AppDestination.MAIN_APP
                     }
                 )
             }
@@ -127,6 +142,7 @@ fun AppRootNavigation() {
 @Composable
 fun FMSApp(
     initialRole: UserRole = UserRole.FARMER,
+    onNavigateToMilkEntry: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var activeRole by remember { mutableStateOf(initialRole) }
@@ -164,8 +180,12 @@ fun FMSApp(
                 label = "RoleDashboardAnimation"
             ) { role ->
                 when (role) {
-                    UserRole.FARMER -> FarmerDashboard()
-                    UserRole.FARM_WORKER -> WorkerDashboard()
+                    UserRole.FARMER -> FarmerDashboard(
+                        onNavigateToRecordMilk = onNavigateToMilkEntry
+                    )
+                    UserRole.FARM_WORKER -> WorkerDashboard(
+                        onNavigateToMilkLog = onNavigateToMilkEntry
+                    )
                     UserRole.VETERINARIAN -> VetDashboard()
                     UserRole.AGGREGATOR -> AggregatorDashboard()
                 }
