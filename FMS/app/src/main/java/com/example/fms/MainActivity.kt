@@ -27,6 +27,7 @@ import com.example.fms.ui.screens.farmer.DailyMilkEntryScreen
 import com.example.fms.ui.screens.finance.FinanceScreen
 import com.example.fms.ui.screens.herd.AnimalDetailScreen
 import com.example.fms.ui.screens.herd.HerdOverviewScreen
+import com.example.fms.ui.screens.vets.FindVetScreen
 import com.example.fms.ui.theme.FMSTheme
 
 enum class AppDestination {
@@ -38,7 +39,8 @@ enum class AppDestination {
     DAILY_MILK_ENTRY,
     HERD_OVERVIEW,
     ANIMAL_DETAIL,
-    FINANCE
+    FINANCE,
+    FIND_VET
 }
 
 class MainActivity : ComponentActivity() {
@@ -134,6 +136,9 @@ fun AppRootNavigation() {
                     onNavigateToFinance = {
                         currentDestination = AppDestination.FINANCE
                     },
+                    onNavigateToFindVet = {
+                        currentDestination = AppDestination.FIND_VET
+                    },
                     onLogout = {
                         currentDestination = AppDestination.LOGIN
                     }
@@ -167,11 +172,20 @@ fun AppRootNavigation() {
                     onBackClick = {
                         currentDestination = AppDestination.HERD_OVERVIEW
                     },
-                    onLogMedicalEvent = {}
+                    onLogMedicalEvent = {
+                        currentDestination = AppDestination.FIND_VET
+                    }
                 )
             }
             AppDestination.FINANCE -> {
                 FinanceScreen(
+                    onBackClick = {
+                        currentDestination = AppDestination.MAIN_APP
+                    }
+                )
+            }
+            AppDestination.FIND_VET -> {
+                FindVetScreen(
                     onBackClick = {
                         currentDestination = AppDestination.MAIN_APP
                     }
@@ -187,6 +201,7 @@ fun FMSApp(
     onNavigateToMilkEntry: () -> Unit = {},
     onNavigateToHerd: () -> Unit = {},
     onNavigateToFinance: () -> Unit = {},
+    onNavigateToFindVet: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var activeRole by remember { mutableStateOf(initialRole) }
