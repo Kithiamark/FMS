@@ -7,31 +7,30 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.fms.data.model.CattleRecord
 import com.example.fms.data.model.UserRole
-import com.example.fms.ui.components.BottomNavItem
-import com.example.fms.ui.components.IslandBottomBar
+import com.example.fms.ui.components.navigation.BottomNavItem
+import com.example.fms.ui.components.navigation.IslandBottomBar
 import com.example.fms.ui.screens.AggregatorDashboard
-import com.example.fms.ui.screens.FarmerDashboard
 import com.example.fms.ui.screens.VetDashboard
 import com.example.fms.ui.screens.WorkerDashboard
 import com.example.fms.ui.screens.auth.LoginScreen
 import com.example.fms.ui.screens.auth.OTPVerifyScreen
 import com.example.fms.ui.screens.auth.RegisterScreen
 import com.example.fms.ui.screens.auth.SplashScreen
-import com.example.fms.ui.screens.chat.ChatScreen
-import com.example.fms.ui.screens.community.CommunityScreen
 import com.example.fms.ui.screens.farmer.DailyMilkEntryScreen
-import com.example.fms.ui.screens.finance.FinanceScreen
-import com.example.fms.ui.screens.herd.AnimalDetailScreen
-import com.example.fms.ui.screens.herd.HerdOverviewScreen
+import com.example.fms.ui.screens.farmer.FarmerDashboard
+import com.example.fms.ui.screens.farmer.chat.FarmerChatScreen
+import com.example.fms.ui.screens.farmer.community.CommunityScreen
+import com.example.fms.ui.screens.farmer.finance.FinanceScreen
+import com.example.fms.ui.screens.farmer.herd.AnimalDetailScreen
+import com.example.fms.ui.screens.farmer.herd.HerdOverviewScreen
+import com.example.fms.ui.screens.farmer.vets.FindVetScreen
 import com.example.fms.ui.screens.settings.SettingsScreen
-import com.example.fms.ui.screens.vets.FindVetScreen
 import com.example.fms.ui.screens.worker.MilkingKeypadScreen
 import com.example.fms.ui.theme.FMSTheme
 
@@ -223,7 +222,7 @@ fun AppRootNavigation() {
                 )
             }
             AppDestination.DIRECT_MESSAGE -> {
-                ChatScreen(
+                FarmerChatScreen(
                     initialRecipient = directMessageRecipient,
                     onBackClick = {
                         currentDestination = AppDestination.MAIN_APP
@@ -310,7 +309,7 @@ fun FMSApp(
                         )
                     }
                     MainNavTab.MESSAGES -> {
-                        ChatScreen()
+                        FarmerChatScreen()
                     }
                     MainNavTab.SETTINGS -> {
                         SettingsScreen(

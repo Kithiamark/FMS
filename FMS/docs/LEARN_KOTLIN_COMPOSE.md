@@ -268,3 +268,134 @@ Explore these files in Android Studio or your editor:
 5. Tap between **Farmer**, **Worker**, **Vet**, and **Buyer** at the bottom to experience the interactive island UI!
 
 *Happy learning and happy coding! 🚜🥛*
+
+---
+
+## 8. Deep Dive: Building a Twitter/X Timeline in Compose
+
+In `com.example.fms.ui.screens.farmer.community.CommunityScreen.kt`, we built a micro-blogging timeline for Kenyan dairy farmers. Here is how that translates from concept to code:
+
+### Sticky Category Tabs (`TabRow`)
+Twitter uses sticky tabs at the top to filter content ("For You", "Following"). In Compose:
+```kotlin
+var selectedFeedTab by remember { mutableIntStateOf(0) }
+
+TabRow(
+    selectedTabIndex = selectedFeedTab,
+    containerColor = MaterialTheme.colorScheme.background,
+    contentColor = EmeraldPrimary
+) {
+    Tab(
+        selected = selectedFeedTab == 0,
+        onClick = { selectedFeedTab = 0 },
+        text = { Text("For You") }
+    )
+    Tab(
+        selected = selectedFeedTab == 1,
+        onClick = { selectedFeedTab = 1 },
+        text = { Text("Alerts") }
+    )
+    // ...
+}
+```
+
+### Feed Item Layout: Multi-Column Tweet Structure
+A Twitter post is fundamentally a two-column row:
+1. **Left column**: Circular author avatar (`Surface(shape = CircleShape)`).
+2. **Right column**: Author metadata, handle (`@kiprono_dvm`), location pin, body text, and the 4-icon interaction bar.
+
+```kotlin
+Row(
+    modifier = Modifier.fillMaxWidth().padding(16.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp)
+) {
+    // 1. Author Avatar
+    Surface(shape = CircleShape, modifier = Modifier.size(44.dp)) { ... }
+
+    // 2. Tweet Content & Actions
+    Column(modifier = Modifier.weight(1f)) {
+        // Name · Handle · Time
+        Row {
+            Text(post.name, fontWeight = FontWeight.Bold)
+            if (post.isVerified) Icon(Icons.Rounded.CheckCircle, ...)
+            Text(post.handle, color = Color.Gray)
+        }
+        Text(post.content)
+
+        // Engagement Action Row
+        Row(horizontalArrangement = Arrangement.SpaceBetween) {
+            // Reply, Repost, Like, Bookmark, DM
+        }
+    }
+}
+```
+
+---
+
+## 9. Crafting Farm Chat Bubbles (FMS Pill & Bubble Style)
+
+In `com.example.fms.ui.screens.farmer.chat.FarmerChatScreen.kt`, we wanted a messaging interface that feels familiar like WhatsApp, but distinctly tailored to FMS:
+
+### 1. Asymmetric Corner Pill Shapes
+In standard Material cards, all 4 corners usually share the same radius (`RoundedCornerShape(16.dp)`). In messaging, speech bubbles have one "pointed" tail:
+
+```kotlin
+val isMe = message.isOutgoing
+
+Surface(
+    shape = RoundedCornerShape(
+        topStart = 20.dp,
+        topEnd = 20.dp,
+        bottomStart = if (isMe) 20.dp else 4.dp, // Tail points left if incoming
+        bottomEnd = if (isMe) 4.dp else 20.dp    // Tail points right if outgoing
+    ),
+    color = if (isMe) EmeraldPrimary else MaterialTheme.colorScheme.surface,
+    modifier = Modifier.widthIn(max = 290.dp)
+) {
+    Column(modifier = Modifier.padding(14.dp)) {
+        Text(message.content, color = if (isMe) Color.White else Color.Black)
+        // Timestamp + Double Ticks
+        Row(modifier = Modifier.align(Alignment.End)) {
+            Text(message.time)
+            if (isMe) Icon(Icons.Rounded.DoneAll, tint = SkyBlue)
+        }
+    }
+}
+```
+
+### 2. Clean Input Capsule (No Audio Recording)
+Instead of a microphone button, we provide a clean, rounded text input capsule with an attachment paperclip and an immediate send pill button that activates as soon as text is typed:
+
+```kotlin
+Surface(
+    shape = RoundedCornerShape(24.dp),
+    color = MaterialTheme.colorScheme.surface,
+    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+) {
+    Row {
+        OutlinedTextField(value = textInput, ...)
+        Icon(Icons.Rounded.AttachFile, contentDescription = "Attach Document or Cow Photo")
+    }
+}
+```
+
+---
+
+## 10. The Component Design System (`ui/components/`)
+
+Notice how we organized our code into modular packages:
+```
+ui/components/
+ ├── cards/
+ │    └── IslandCard.kt       // Spring elevation card for content
+ ├── navigation/
+ │    └── IslandBottomNav.kt  // Floating 5-tab capsule bar
+ ├── common/
+ │    └── BadgesAndPills.kt   // Status badges & HeroHeader
+ └── buttons/
+      └── IslandButtons.kt    // Primary action buttons with loading spinners
+```
+
+**Why this matters for your learning**:
+- When you want to change card shadows or corner radius, you only edit **one file** (`IslandCard.kt`). Every screen in the app updates automatically!
+- Each component takes parameters and a `content: @Composable () -> Unit` slot. This is known as **Slot API Architecture**.

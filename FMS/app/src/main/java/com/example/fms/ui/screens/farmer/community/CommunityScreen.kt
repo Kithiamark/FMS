@@ -1,4 +1,4 @@
-package com.example.fms.ui.screens.community
+package com.example.fms.ui.screens.farmer.community
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.fms.ui.components.PillBadge
+import com.example.fms.ui.components.common.PillBadge
 import com.example.fms.ui.theme.*
 
 data class TweetPost(

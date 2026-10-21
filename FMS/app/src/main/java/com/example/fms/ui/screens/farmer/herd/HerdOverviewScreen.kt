@@ -1,4 +1,4 @@
-package com.example.fms.ui.screens.herd
+package com.example.fms.ui.screens.farmer.herd
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -23,9 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fms.data.model.CattleRecord
-import com.example.fms.ui.components.IslandButton
-import com.example.fms.ui.components.IslandCard
-import com.example.fms.ui.components.PillBadge
+import com.example.fms.ui.components.buttons.IslandButton
+import com.example.fms.ui.components.cards.IslandCard
+import com.example.fms.ui.components.common.PillBadge
 import com.example.fms.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)

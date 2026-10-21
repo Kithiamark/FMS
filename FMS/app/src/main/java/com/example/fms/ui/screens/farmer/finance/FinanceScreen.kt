@@ -1,4 +1,4 @@
-package com.example.fms.ui.screens.finance
+package com.example.fms.ui.screens.farmer.finance
 
 import android.content.Intent
 import android.net.Uri
@@ -25,9 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.fms.ui.components.IslandButton
-import com.example.fms.ui.components.IslandCard
-import com.example.fms.ui.components.PillBadge
+import com.example.fms.ui.components.buttons.IslandButton
+import com.example.fms.ui.components.cards.IslandCard
+import com.example.fms.ui.components.common.PillBadge
 import com.example.fms.ui.theme.*
 
 data class TransactionItem(

@@ -1,4 +1,4 @@
-package com.example.fms.ui.screens
+package com.example.fms.ui.screens.farmer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,9 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fms.data.model.DailyMilkSummary
 import com.example.fms.data.model.FarmTask
-import com.example.fms.ui.components.HeroHeader
-import com.example.fms.ui.components.IslandCard
-import com.example.fms.ui.components.PillBadge
+import com.example.fms.ui.components.common.HeroHeader
+import com.example.fms.ui.components.cards.IslandCard
+import com.example.fms.ui.components.common.PillBadge
 import com.example.fms.ui.theme.*
 
 @Composable

@@ -24,8 +24,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.fms.ui.components.IslandButton
-import com.example.fms.ui.components.IslandCard
+import com.example.fms.ui.components.buttons.IslandButton
+import com.example.fms.ui.components.cards.IslandCard
 import com.example.fms.ui.theme.*
 
 @Composable
