@@ -48,6 +48,7 @@ export const StatCard = ({
   subtext,
   accent,
   badge,
+  glossy = true,
   loading = false,
   onClick,
   className = '',
@@ -77,7 +78,9 @@ export const StatCard = ({
     <div
       onClick={onClick}
       className={cn(
-        'rounded-card border border-surface-border bg-surface p-5 shadow-card transition-all duration-200',
+        glossy
+          ? 'rounded-card glossy-card p-5 transition-all duration-200'
+          : 'rounded-card border border-surface-border bg-surface p-5 shadow-card transition-all duration-200',
         accentConfig?.border,
         onClick && 'cursor-pointer hover:shadow-card-hover active:scale-[0.99]',
         className

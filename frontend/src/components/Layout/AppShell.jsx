@@ -268,7 +268,7 @@ export const AppShell = ({ children, roleOverride }) => {
       {/* Main Content Area */}
       <main className="relative flex flex-1 flex-col overflow-hidden">
         {/* Top App Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-md md:h-20 md:px-8">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/85 backdrop-blur-xl px-4 md:h-20 md:px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"

@@ -1,12 +1,14 @@
 import React from 'react';
 import { cn } from './Button';
 
-export const Card = ({ children, className = '', roleAccent = false, onClick, ...props }) => {
+export const Card = ({ children, className = '', roleAccent = false, glossy = false, onClick, ...props }) => {
   return (
     <div
       onClick={onClick}
       className={cn(
-        'rounded-card border border-surface-border bg-surface p-5 shadow-card transition-all duration-200',
+        glossy
+          ? 'rounded-card glossy-card p-5 transition-all duration-200'
+          : 'rounded-card border border-surface-border bg-surface p-5 shadow-card transition-all duration-200',
         roleAccent && 'border-l-4 border-l-role-accent',
         onClick && 'cursor-pointer hover:shadow-card-hover active:scale-[0.99]',
         className
