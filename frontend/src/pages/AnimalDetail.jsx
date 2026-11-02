@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAnimal, useDeleteAnimal } from '../hooks/useAnimals';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Download, Trash2, PenLine } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, PenLine, AlertTriangle } from 'lucide-react';
 import { AnimalEditModal } from '../components/AnimalEditModal';
+import { Modal } from '../components/ui/Modal';
+import { Button } from '../components/ui/Button';
+import { useToast } from '../components/ui/Toast';
 
 const AnimalDetail = () => {
     const { id } = useParams();
@@ -11,16 +14,22 @@ const AnimalDetail = () => {
     const { user } = useAuth();
     const { data: animal, isLoading } = useAnimal(id);
     const { mutate: deleteAnimal } = useDeleteAnimal();
+    const { addToast } = useToast();
     const [activeTab, setActiveTab] = useState('overview');
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     
     if (isLoading) return <div className="p-8">Loading...</div>;
     if (!animal) return <div className="p-8">Animal not found</div>;
 
-    const handleDelete = () => {
-        if (confirm('Are you sure you want to archive this animal?')) {
-            deleteAnimal(id, { onSuccess: () => navigate('/animals') });
-        }
+    const confirmDelete = () => {
+        deleteAnimal(id, {
+            onSuccess: () => {
+                addToast('Animal archived successfully', 'success');
+                navigate('/animals');
+            },
+            onError: () => addToast('Failed to archive animal', 'error'),
+        });
     };
 
     return (
@@ -55,7 +64,7 @@ const AnimalDetail = () => {
                                     <PenLine size={20} />
                                 </button>
                                 {user?.role !== 'FARM_WORKER' && (
-                                    <button onClick={handleDelete} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Archive animal">
+                                    <button onClick={() => setIsDeleteModalOpen(true)} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Archive animal">
                                         <Trash2 size={20} />
                                     </button>
                                 )}
@@ -175,6 +184,27 @@ const AnimalDetail = () => {
                 onClose={() => setIsEditModalOpen(false)}
                 animal={animal}
             />
+
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="Archive Animal"
+                size="sm"
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-slate-600">
+                        Are you sure you want to archive <strong>{animal.name}</strong> ({animal.ear_tag})? This animal will be removed from your active herd list.
+                    </p>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="primary" className="bg-red-600 hover:bg-red-700 text-white" onClick={confirmDelete}>
+                            Archive Animal
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

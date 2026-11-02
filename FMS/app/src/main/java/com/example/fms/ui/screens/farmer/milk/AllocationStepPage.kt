@@ -167,3 +167,35 @@ private fun AllocationInputCard(
         }
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Allocation Step Light")
+@Composable
+fun AllocationStepPagePreview() {
+    FMSTheme(darkTheme = false) {
+        AllocationStepPage(
+            totalProduced = 45.0,
+            calvesLitres = "8.0",
+            onCalvesChange = {},
+            homeUseLitres = "5.0",
+            onHomeUseChange = {},
+            soldLitres = "32.0",
+            onSoldChange = {}
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Allocation Step Dark")
+@Composable
+fun AllocationStepPageDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        AllocationStepPage(
+            totalProduced = 45.0,
+            calvesLitres = "8.0",
+            onCalvesChange = {},
+            homeUseLitres = "5.0",
+            onHomeUseChange = {},
+            soldLitres = "32.0",
+            onSoldChange = {}
+        )
+    }
+}

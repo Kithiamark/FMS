@@ -81,7 +81,7 @@ fun AdminFarmersScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 110.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Search Input
@@ -152,5 +152,21 @@ fun AdminFarmersScreen(
                 Spacer(modifier = Modifier.height(70.dp))
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Admin Farmers Light")
+@Composable
+fun AdminFarmersScreenPreview() {
+    FMSTheme(darkTheme = false) {
+        AdminFarmersScreen()
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Admin Farmers Dark")
+@Composable
+fun AdminFarmersScreenDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        AdminFarmersScreen()
     }
 }

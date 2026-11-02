@@ -20,12 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fms.data.model.CattleRecord
 import com.example.fms.ui.components.buttons.IslandButton
 import com.example.fms.ui.components.cards.IslandCard
+import com.example.fms.ui.components.common.InsetGroup
+import com.example.fms.ui.components.common.InsetRow
 import com.example.fms.ui.components.common.PillBadge
+import com.example.fms.ui.components.modals.IslandModal
 import com.example.fms.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +41,14 @@ fun HerdOverviewScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") }
+
+    var showAddAnimalModal by remember { mutableStateOf(false) }
+    var newTagNumber by remember { mutableStateOf("") }
+    var newCowName by remember { mutableStateOf("") }
+    var newBreed by remember { mutableStateOf("Friesian") }
+    var newStatus by remember { mutableStateOf("Healthy") }
+    var newYield by remember { mutableStateOf("26.0") }
+    var hasError by remember { mutableStateOf(false) }
 
     var herd by remember {
         mutableStateOf(
@@ -88,7 +100,10 @@ fun HerdOverviewScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onAddAnimalClick) {
+                    IconButton(onClick = {
+                        showAddAnimalModal = true
+                        onAddAnimalClick()
+                    }) {
                         Surface(
                             shape = CircleShape,
                             color = EmeraldPrimary,
@@ -159,17 +174,53 @@ fun HerdOverviewScreen(
                 HerdFilterChip("DRY_PREGNANT", "Dry / In-Calf", selectedFilter == "DRY_PREGNANT") { selectedFilter = "DRY_PREGNANT" }
             }
 
-            // Cattle List
+            // Cattle List Inset Group
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                contentPadding = PaddingValues(vertical = 8.dp)
             ) {
-                items(filteredHerd) { cow ->
-                    CattleListItem(
-                        cow = cow,
-                        onClick = { onAnimalSelected(cow) }
-                    )
+                item {
+                    InsetGroup(
+                        header = "Registered Cattle (${filteredHerd.size})",
+                        footer = "Tap on any cow to view full veterinary pedigree, lactation cycle, and medical history."
+                    ) {
+                        if (filteredHerd.isEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "No cattle found matching criteria.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            filteredHerd.forEachIndexed { index, cow ->
+                                val (statusBg, statusColor) = when (cow.healthStatus) {
+                                    "Healthy" -> Pair(EmeraldPrimary.copy(alpha = 0.15f), EmeraldPrimary)
+                                    "In Treatment" -> Pair(RoseRed.copy(alpha = 0.15f), RoseRed)
+                                    "Pregnant" -> Pair(SkyBlue.copy(alpha = 0.15f), SkyBlue)
+                                    else -> Pair(GoldAmber.copy(alpha = 0.15f), GoldAmber)
+                                }
+
+                                InsetRow(
+                                    title = "${cow.name} (${cow.tagNumber})",
+                                    subtitle = "${cow.breed} • Avg ${"%.1f".format(cow.dailyAvgYield)} L/day",
+                                    leadingIcon = com.example.fms.ui.theme.CowIcon,
+                                    iconTint = statusColor,
+                                    iconBackgroundColor = statusBg,
+                                    trailingBadge = cow.healthStatus,
+                                    badgeColor = statusColor,
+                                    showChevron = true,
+                                    showDivider = index < filteredHerd.size - 1,
+                                    onClick = { onAnimalSelected(cow) }
+                                )
+                            }
+                        }
+                    }
                 }
 
                 item {
@@ -178,6 +229,217 @@ fun HerdOverviewScreen(
             }
         }
     }
+
+    // Add Animal iOS-Style ModalBottomSheet
+    if (showAddAnimalModal) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showAddAnimalModal = false
+                hasError = false
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 10.dp, bottom = 6.dp)
+                        .width(36.dp)
+                        .height(5.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                )
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Register New Animal",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Enter ear tag and basic pedigree vitals",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    PillBadge(
+                        text = "NEW COW",
+                        containerColor = EmeraldPrimary.copy(alpha = 0.15f),
+                        contentColor = EmeraldPrimary
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+                OutlinedTextField(
+                    value = newTagNumber,
+                    onValueChange = {
+                        newTagNumber = it
+                        if (it.isNotBlank()) hasError = false
+                    },
+                label = { Text("Ear Tag Number *") },
+                placeholder = { Text("e.g. #145 or 145") },
+                singleLine = true,
+                isError = hasError && newTagNumber.isBlank(),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            OutlinedTextField(
+                value = newCowName,
+                onValueChange = {
+                    newCowName = it
+                    if (it.isNotBlank()) hasError = false
+                },
+                label = { Text("Animal Name *") },
+                placeholder = { Text("e.g. Zawadi, Bella") },
+                singleLine = true,
+                isError = hasError && newCowName.isBlank(),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Column {
+                Text(
+                    text = "Breed Selection",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("Friesian", "Ayrshire", "Jersey", "Guernsey", "Sahiwal", "Mixed").forEach { b ->
+                        FilterChip(
+                            selected = newBreed == b,
+                            onClick = { newBreed = b },
+                            label = { Text(b, fontSize = 12.sp) },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldPrimary.copy(alpha = 0.2f),
+                                selectedLabelColor = EmeraldPrimary
+                            )
+                        )
+                    }
+                }
+            }
+
+            Column {
+                Text(
+                    text = "Lactation / Health Status",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("Healthy", "In Treatment", "Pregnant", "Dry").forEach { s ->
+                        FilterChip(
+                            selected = newStatus == s,
+                            onClick = { newStatus = s },
+                            label = { Text(s, fontSize = 12.sp) },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldPrimary.copy(alpha = 0.2f),
+                                selectedLabelColor = EmeraldPrimary
+                            )
+                        )
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = newYield,
+                onValueChange = { newYield = it },
+                label = { Text("Average Daily Yield (Liters)") },
+                placeholder = { Text("e.g. 26.5") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            if (hasError) {
+                Text(
+                    text = "Please enter both an Ear Tag Number and Cow Name.",
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        showAddAnimalModal = false
+                        hasError = false
+                    },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("Cancel", fontWeight = FontWeight.SemiBold)
+                }
+
+                Button(
+                    onClick = {
+                        if (newTagNumber.isBlank() || newCowName.isBlank()) {
+                            hasError = true
+                        } else {
+                            val cleanTag = if (newTagNumber.startsWith("#")) newTagNumber.trim() else "#${newTagNumber.trim()}"
+                            val newCow = CattleRecord(
+                                id = (herd.size + 1).toString(),
+                                tagNumber = cleanTag,
+                                name = newCowName.trim(),
+                                breed = newBreed,
+                                healthStatus = newStatus,
+                                dailyAvgYield = newYield.toDoubleOrNull() ?: 0.0
+                            )
+                            herd = listOf(newCow) + herd
+                            newTagNumber = ""
+                            newCowName = ""
+                            hasError = false
+                            showAddAnimalModal = false
+                        }
+                    },
+                    modifier = Modifier.weight(1.5f).height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Register Cow", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
 }
 
 @Composable
@@ -202,7 +464,10 @@ fun CattleListItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = EmeraldPrimary.copy(alpha = 0.12f),
@@ -210,7 +475,7 @@ fun CattleListItem(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Rounded.Pets,
+                            imageVector = com.example.fms.ui.theme.CowIcon,
                             contentDescription = null,
                             tint = EmeraldPrimary,
                             modifier = Modifier.size(24.dp)
@@ -220,35 +485,44 @@ fun CattleListItem(
 
                 Spacer(modifier = Modifier.width(14.dp))
 
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = cow.name,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = cow.tagNumber,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 12.sp,
-                            color = EmeraldPrimary
+                            color = EmeraldPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "${cow.breed} • Avg ${"%.1f".format(cow.dailyAvgYield)} L/day",
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
+            Spacer(modifier = Modifier.width(8.dp))
+
             PillBadge(
                 text = cow.healthStatus,
                 containerColor = statusBg,
-                contentColor = statusColor
+                contentColor = statusColor,
+                onClick = onClick
             )
         }
     }

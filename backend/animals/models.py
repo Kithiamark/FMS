@@ -77,6 +77,7 @@ class HealthRecord(models.Model):
     vet = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, limit_choices_to={'role': 'VETERINARIAN'})
     cost_kes = models.IntegerField()
     next_checkup_date = models.DateField(null=True, blank=True)
+    withdrawal_period_days = models.PositiveIntegerField(default=0, help_text="Milk withdrawal days following antibiotic treatment")
     notes = models.TextField(blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_health_records')
     created_at = models.DateTimeField(auto_now_add=True)

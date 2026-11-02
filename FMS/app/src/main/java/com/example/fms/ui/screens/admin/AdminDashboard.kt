@@ -21,7 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fms.ui.components.cards.IslandCard
 import com.example.fms.ui.components.common.HeroHeader
+import com.example.fms.ui.components.common.InsetGroup
+import com.example.fms.ui.components.common.InsetRow
 import com.example.fms.ui.components.common.PillBadge
+import com.example.fms.ui.components.modals.IslandModal
 import com.example.fms.ui.theme.*
 
 data class PlatformMetric(
@@ -47,6 +50,7 @@ data class PlatformAuditLog(
     val level: String // INFO, WARNING, SUCCESS
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboard() {
     val platformKpis = listOf(
@@ -76,276 +80,258 @@ fun AdminDashboard() {
 
     var showBroadcastDialog by remember { mutableStateOf(false) }
 
-    LazyColumn(
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // Hero Header
-        item {
-            HeroHeader(
-                title = "FMS Operations Command",
-                subtitle = "Cooperative Network & System Oversight"
-            )
-        }
-
-        // Platform KPIs 2x2 Grid
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "Platform Core Performance",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(bottom = 110.dp),
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 1. Hero Header integrated seamlessly into scroll flow
+            item {
+                HeroHeader(
+                    title = "FMS Operations Command",
+                    subtitle = "Cooperative Network & System Oversight",
+                    roleBadge = "ADMIN COMMAND"
                 )
-
-                // First Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    KpiStatCard(metric = platformKpis[0], modifier = Modifier.weight(1f))
-                    KpiStatCard(metric = platformKpis[1], modifier = Modifier.weight(1f))
-                }
-
-                // Second Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    KpiStatCard(metric = platformKpis[2], modifier = Modifier.weight(1f))
-                    KpiStatCard(metric = platformKpis[3], modifier = Modifier.weight(1f))
-                }
             }
-        }
 
-        // County Yield Progress Bars
-        item {
-            IslandCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Regional Volume Intake",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+            // Platform KPIs Inset Group
+            item {
+                InsetGroup(
+                    header = "Platform Overview",
+                    footer = "Multi-tenant cooperative sync across Rift Valley & Central hubs."
+                ) {
+                    platformKpis.forEachIndexed { index, kpi ->
+                        InsetRow(
+                            title = kpi.title,
+                            subtitle = kpi.subtitle,
+                            leadingIcon = kpi.icon,
+                            iconTint = kpi.trendColor,
+                            iconBackgroundColor = kpi.trendColor.copy(alpha = 0.12f),
+                            trailingText = kpi.value,
+                            showChevron = false,
+                            showDivider = index < platformKpis.size - 1
                         )
-                        PillBadge(
-                            text = "4 Counties Active",
-                            containerColor = EmeraldPrimary.copy(alpha = 0.15f),
-                            contentColor = EmeraldPrimary
-                        )
-                    }
-
-                    countyData.forEach { county ->
-                        val progress = (county.dailyLitres / county.targetLitres).toFloat().coerceIn(0f, 1f)
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "${county.countyName} (${county.farmsCount} farms)",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "${county.dailyLitres.toInt()} / ${county.targetLitres.toInt()} L",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = EmeraldPrimary
-                                )
-                            }
-                            LinearProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
-                                color = EmeraldPrimary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        }
                     }
                 }
             }
-        }
 
-        // Quick Admin Controls
-        item {
-            IslandCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Administrative Actions",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+            // County Yield Progress Inset Group
+            item {
+                InsetGroup(
+                    header = "Regional Intake Volumes",
+                    footer = "Live dairy cooperative intake metrics updated every 15 minutes."
+                ) {
+                    countyData.forEachIndexed { index, county ->
+                        InsetRow(
+                            title = county.countyName,
+                            subtitle = "${county.farmsCount} registered farms",
+                            leadingIcon = Icons.Rounded.LocationCity,
+                            iconTint = EmeraldPrimary,
+                            iconBackgroundColor = EmeraldPrimary.copy(alpha = 0.12f),
+                            trailingText = "${county.dailyLitres.toInt()} / ${county.targetLitres.toInt()} L",
+                            trailingBadge = "${((county.dailyLitres / county.targetLitres) * 100).toInt()}%",
+                            badgeColor = EmeraldPrimary,
+                            showChevron = false,
+                            showDivider = index < countyData.size - 1
+                        )
+                    }
+                }
+            }
+
+            // Administrative Operations Inset Group
+            item {
+                InsetGroup(
+                    header = "Administrative Controls",
+                    footer = "Security safeguards: broadcast notices notify all registered cooperative farmers."
+                ) {
+                    InsetRow(
+                        title = "Broadcast Biosecurity Advisory",
+                        subtitle = "Send emergency SMS and push notices to farmers",
+                        leadingIcon = Icons.Rounded.Campaign,
+                        iconTint = RoseRed,
+                        iconBackgroundColor = RoseRed.copy(alpha = 0.12f),
+                        showChevron = true,
+                        onClick = { showBroadcastDialog = true }
                     )
+                    InsetRow(
+                        title = "Export Cooperative Audit Log",
+                        subtitle = "Download platform compliance CSV for KVB & regulator",
+                        leadingIcon = Icons.Rounded.Download,
+                        iconTint = ForestGreen,
+                        iconBackgroundColor = ForestGreen.copy(alpha = 0.12f),
+                        showChevron = true,
+                        showDivider = false,
+                        onClick = { /* Export CSV */ }
+                    )
+                }
+            }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            onClick = { showBroadcastDialog = true },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
-                        ) {
-                            Icon(Icons.Rounded.Campaign, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Broadcast Alert", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            // Audit Trail Inset Group
+            item {
+                InsetGroup(
+                    header = "Platform Audit Trail (${auditLogs.size})",
+                    footer = "Immutable audit log recorded for system integrity and accountability."
+                ) {
+                    auditLogs.forEachIndexed { index, log ->
+                        val (statusBg, statusColor) = when (log.level) {
+                            "WARNING" -> Pair(RoseRed.copy(alpha = 0.15f), RoseRed)
+                            "SUCCESS" -> Pair(EmeraldPrimary.copy(alpha = 0.15f), EmeraldPrimary)
+                            else -> Pair(SkyBlue.copy(alpha = 0.15f), SkyBlue)
                         }
 
-                        OutlinedButton(
-                            onClick = { /* Export CSV */ },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Export Audit", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
+                        InsetRow(
+                            title = log.event,
+                            subtitle = "${log.actor} • ${log.timeAgo}",
+                            leadingIcon = Icons.Rounded.History,
+                            iconTint = statusColor,
+                            iconBackgroundColor = statusBg,
+                            trailingBadge = log.level,
+                            badgeColor = statusColor,
+                            showChevron = false,
+                            showDivider = index < auditLogs.size - 1
+                        )
                     }
                 }
             }
-        }
 
-        // Audit Trail Feed
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "System Audit Trail",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                auditLogs.forEach { log ->
-                    IslandCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = when (log.level) {
-                                    "WARNING" -> RoseRed.copy(alpha = 0.15f)
-                                    "SUCCESS" -> EmeraldPrimary.copy(alpha = 0.15f)
-                                    else -> SkyBlue.copy(alpha = 0.15f)
-                                },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = when (log.level) {
-                                            "WARNING" -> Icons.Rounded.Warning
-                                            "SUCCESS" -> Icons.Rounded.CheckCircle
-                                            else -> Icons.Rounded.Info
-                                        },
-                                        contentDescription = null,
-                                        tint = when (log.level) {
-                                            "WARNING" -> RoseRed
-                                            "SUCCESS" -> EmeraldPrimary
-                                            else -> SkyBlue
-                                        },
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = log.event,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text(text = log.actor, fontSize = 11.sp, color = EmeraldPrimary)
-                                    Text(text = "· ${log.timeAgo}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
-                    }
-                }
+            item {
+                Spacer(modifier = Modifier.height(40.dp))
             }
         }
-
-        item {
-            Spacer(modifier = Modifier.height(40.dp))
-        }
-    }
 
     if (showBroadcastDialog) {
         var alertMessage by remember { mutableStateOf("") }
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showBroadcastDialog = false },
-            title = { Text("Cooperative Broadcast Alert", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Broadcast an emergency SMS and Community banner to all registered farmers:", fontSize = 13.sp)
-                    OutlinedTextField(
-                        value = alertMessage,
-                        onValueChange = { alertMessage = it },
-                        placeholder = { Text("e.g. Mandatory vaccine camp scheduled this Thursday...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 10.dp, bottom = 6.dp)
+                        .width(36.dp)
+                        .height(5.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                )
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Emergency Advisory Broadcast",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Cooperative SMS & Push Notification Dispatch",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    PillBadge(
+                        text = "Priority 1",
+                        containerColor = RoseRed.copy(alpha = 0.15f),
+                        contentColor = RoseRed
                     )
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (alertMessage.isNotBlank()) {
-                            auditLogs = listOf(
-                                PlatformAuditLog(
-                                    id = "a_${System.currentTimeMillis()}",
-                                    event = alertMessage,
-                                    actor = "Admin Broadcast",
-                                    timeAgo = "Just now",
-                                    level = "WARNING"
-                                )
-                            ) + auditLogs
-                        }
-                        showBroadcastDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+                InsetGroup(
+                    header = "Broadcast Audience"
                 ) {
-                    Text("Send Broadcast")
+                    InsetRow(
+                        title = "Recipient Group",
+                        subtitle = "All verified farmers & herd managers",
+                        trailingText = "1,420 Farms",
+                        showChevron = false,
+                        showDivider = true
+                    )
+                    InsetRow(
+                        title = "Regional Coverage",
+                        subtitle = "Uasin Gishu, Kiambu, Nandi, Nakuru",
+                        trailingBadge = "4 Counties",
+                        badgeColor = EmeraldPrimary,
+                        showChevron = false,
+                        showDivider = false
+                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBroadcastDialog = false }) {
-                    Text("Cancel")
+
+                OutlinedTextField(
+                    value = alertMessage,
+                    onValueChange = { alertMessage = it },
+                    placeholder = { Text("e.g. Mandatory vaccine camp scheduled this Thursday. Halt livestock movements...") },
+                    minLines = 3,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldPrimary,
+                        cursorColor = EmeraldPrimary
+                    )
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showBroadcastDialog = false },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (alertMessage.isNotBlank()) {
+                                auditLogs = listOf(
+                                    PlatformAuditLog(
+                                        id = "a_${System.currentTimeMillis()}",
+                                        event = alertMessage,
+                                        actor = "Admin Broadcast",
+                                        timeAgo = "Just now",
+                                        level = "WARNING"
+                                    )
+                                ) + auditLogs
+                            }
+                            showBroadcastDialog = false
+                        },
+                        modifier = Modifier.weight(1.5f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = RoseRed),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Rounded.Campaign, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Send Broadcast", fontWeight = FontWeight.Bold)
+                    }
                 }
-            },
-            shape = RoundedCornerShape(20.dp)
-        )
+            }
+        }
     }
+}
 }
 
 @Composable

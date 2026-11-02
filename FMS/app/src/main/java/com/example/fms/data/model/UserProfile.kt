@@ -56,3 +56,49 @@ data class VetInquiry(
     val urgency: String, // High, Medium, Low
     val date: String
 )
+
+/**
+ * Lightweight local interaction tracking for community posts
+ * (avoiding heavy database bloat or unneeded session overhead)
+ */
+data class PostInteraction(
+    val postId: String,
+    val isLiked: Boolean = false,
+    val isReposted: Boolean = false,
+    val isBookmarked: Boolean = false,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+/**
+ * Lightweight community invitation model
+ */
+data class CommunityInvite(
+    val id: String,
+    val communityName: String,
+    val inviteePhoneOrHandle: String,
+    val invitedBy: String = "Baraka Mark",
+    val status: String = "PENDING"
+)
+
+enum class SubscriptionTier(val title: String, val subtitle: String, val quotaCows: Int) {
+    BASIC("Basic Plan", "Smallholder Tier • Up to 5 Cows", 5),
+    ENTERPRISE("Enterprise Plan", "Commercial Tier • Unlimited Herd & AI", 9999)
+}
+
+data class IndemnityRecord(
+    val policyNumber: String,
+    val provider: String,
+    val coverageKes: Long,
+    val expiryDate: String,
+    val status: String // ACTIVE, PENDING_REVIEW, EXPIRED
+)
+
+data class SavedMediaItem(
+    val id: String,
+    val title: String,
+    val author: String,
+    val handle: String,
+    val timeAgo: String,
+    val mediaType: String, // "POST", "VIDEO", "GUIDE"
+    val snippet: String
+)

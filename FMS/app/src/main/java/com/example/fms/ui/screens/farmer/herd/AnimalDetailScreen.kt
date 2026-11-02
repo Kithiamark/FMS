@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.example.fms.data.model.CattleRecord
 import com.example.fms.ui.components.buttons.IslandButton
 import com.example.fms.ui.components.cards.IslandCard
+import com.example.fms.ui.components.common.InsetGroup
+import com.example.fms.ui.components.common.InsetRow
 import com.example.fms.ui.components.common.PillBadge
 import com.example.fms.ui.theme.*
 
@@ -63,136 +65,80 @@ fun AnimalDetailScreen(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Cow Hero Header Island
+            // Cow Passport Inset Group
             item {
-                IslandCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = 6.dp
+                InsetGroup(
+                    header = "Animal Identity & Passport",
+                    footer = "Registered with Kenya Veterinary Board tracking system."
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = EmeraldPrimary.copy(alpha = 0.15f),
-                            modifier = Modifier.size(76.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Pets,
-                                    contentDescription = null,
-                                    tint = EmeraldPrimary,
-                                    modifier = Modifier.size(42.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Text(
-                            text = cow.name,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            PillBadge(
-                                text = "Tag ${cow.tagNumber}",
-                                containerColor = ForestGreen,
-                                contentColor = Color.White
-                            )
-                            PillBadge(
-                                text = cow.breed,
-                                containerColor = SkyBlue.copy(alpha = 0.15f),
-                                contentColor = SkyBlue
-                            )
-                            PillBadge(
-                                text = cow.healthStatus,
-                                containerColor = if (cow.healthStatus == "Healthy") EmeraldPrimary.copy(alpha = 0.15f) else RoseRed.copy(alpha = 0.15f),
-                                contentColor = if (cow.healthStatus == "Healthy") EmeraldPrimary else RoseRed
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Metric pills row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .padding(vertical = 12.dp, horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            PassportMetric("Daily Avg", "${cow.dailyAvgYield} L", EmeraldPrimary)
-                            PassportMetric("Weight", "520 kg", SkyBlue)
-                            PassportMetric("Lactation", "2nd Cycle", GoldAmber)
-                            PassportMetric("Age", "3.5 Yrs", MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
+                    InsetRow(
+                        title = "${cow.name} (${cow.tagNumber})",
+                        subtitle = "${cow.breed} • Age: 3.5 Yrs • Weight: 520 kg",
+                        leadingIcon = com.example.fms.ui.theme.CowIcon,
+                        iconTint = EmeraldPrimary,
+                        iconBackgroundColor = EmeraldPrimary.copy(alpha = 0.12f),
+                        trailingBadge = cow.healthStatus,
+                        badgeColor = if (cow.healthStatus == "Healthy") EmeraldPrimary else RoseRed,
+                        showChevron = false
+                    )
+                    InsetRow(
+                        title = "Daily Yield Average",
+                        subtitle = "Calculated over last 30 milking sessions",
+                        leadingIcon = Icons.Rounded.WaterDrop,
+                        trailingText = "${cow.dailyAvgYield} L/day",
+                        showChevron = false
+                    )
+                    InsetRow(
+                        title = "Lactation Cycle",
+                        subtitle = "2nd Lactation • Calved 4 months ago",
+                        leadingIcon = Icons.Rounded.Timeline,
+                        iconTint = GoldAmber,
+                        iconBackgroundColor = GoldAmber.copy(alpha = 0.12f),
+                        trailingBadge = "Active Lactation",
+                        badgeColor = ForestGreen,
+                        showChevron = false,
+                        showDivider = false
+                    )
                 }
             }
 
-            // Health & Medical Records
+            // Health & Medical Records Inset Group
             item {
-                IslandCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = 3.dp
+                InsetGroup(
+                    header = "Medical & Vaccination Timeline",
+                    footer = "Certified veterinary treatments entered by attending DVM surgeon."
                 ) {
-                    Column(modifier = Modifier.padding(4.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Medical & Vaccination Timeline",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            IconButton(onClick = onLogMedicalEvent) {
-                                Icon(Icons.Rounded.AddCircleOutline, contentDescription = "Add Medical", tint = EmeraldPrimary)
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        MedicalTimelineItem(
-                            title = "Foot & Mouth Booster Vaccine",
-                            date = "Oct 12, 2026",
-                            doctor = "Dr. Kiprono (DVM)",
-                            status = "Verified",
-                            statusColor = EmeraldPrimary
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        MedicalTimelineItem(
-                            title = "Quarter Teat Cleaning & Dip",
-                            date = "Sep 28, 2026",
-                            doctor = "Barn Ops Routine",
-                            status = "Completed",
-                            statusColor = SkyBlue
-                        )
-                    }
+                    InsetRow(
+                        title = "Foot & Mouth Booster Vaccine",
+                        subtitle = "Oct 12, 2026 • By Dr. Kiprono (DVM)",
+                        leadingIcon = Icons.Rounded.Vaccines,
+                        iconTint = EmeraldPrimary,
+                        iconBackgroundColor = EmeraldPrimary.copy(alpha = 0.12f),
+                        trailingBadge = "Verified",
+                        badgeColor = EmeraldPrimary,
+                        showChevron = true
+                    )
+                    InsetRow(
+                        title = "Quarter Teat Cleaning & Dip",
+                        subtitle = "Sep 28, 2026 • Barn Ops Routine",
+                        leadingIcon = Icons.Rounded.Sanitizer,
+                        iconTint = SkyBlue,
+                        iconBackgroundColor = SkyBlue.copy(alpha = 0.12f),
+                        trailingBadge = "Completed",
+                        badgeColor = SkyBlue,
+                        showChevron = true
+                    )
+                    InsetRow(
+                        title = "Log Medical Event / Request Visit",
+                        subtitle = "Request attending vet checkup for ${cow.name}",
+                        leadingIcon = Icons.Rounded.AddCircleOutline,
+                        iconTint = EmeraldPrimary,
+                        iconBackgroundColor = EmeraldPrimary.copy(alpha = 0.12f),
+                        showChevron = true,
+                        showDivider = false,
+                        onClick = onLogMedicalEvent
+                    )
                 }
-            }
-
-            // Quick Actions Button
-            item {
-                IslandButton(
-                    text = "Request Vet Visit for ${cow.name}",
-                    icon = Icons.Rounded.MedicalServices,
-                    onClick = onLogMedicalEvent
-                )
             }
 
             item {

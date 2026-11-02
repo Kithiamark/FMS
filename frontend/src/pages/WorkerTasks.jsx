@@ -22,6 +22,7 @@ const WorkerTasks = () => {
     const { addToast } = useToast();
 
     const [activeModal, setActiveModal] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
     const [taskForm, setTaskForm] = useState({ title: '', description: '', assigned_to: '', due_date: '' });
 
     const isFarmer = user?.role === 'FARMER';
@@ -211,14 +212,7 @@ const WorkerTasks = () => {
                                             )}
                                             {isFarmer && (
                                                 <button 
-                                                    onClick={() => {
-                                                        if (window.confirm(`Delete task "${task.title}"?`)) {
-                                                            deleteTask.mutate(task.id, {
-                                                                onSuccess: () => addToast('Task deleted successfully', 'success'),
-                                                                onError: (err) => addToast(err.response?.data?.detail || 'Could not delete task', 'error')
-                                                            });
-                                                        }
-                                                    }} 
+                                                    onClick={() => setTaskToDelete(task)} 
                                                     className="p-1 text-red-400 hover:text-red-600 transition-colors"
                                                     title="Delete task"
                                                 >
@@ -271,6 +265,44 @@ const WorkerTasks = () => {
                     </div>
                     <Button type="submit" disabled={createTask.isPending} className="w-full">Assign Task</Button>
                 </form>
+            </Modal>
+
+            <Modal
+                isOpen={!!taskToDelete}
+                onClose={() => setTaskToDelete(null)}
+                title="Delete Task"
+                size="sm"
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-slate-600">
+                        Are you sure you want to delete task <strong>"{taskToDelete?.title}"</strong>?
+                    </p>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setTaskToDelete(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="primary"
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            disabled={deleteTask.isPending}
+                            onClick={() => {
+                                if (taskToDelete) {
+                                    deleteTask.mutate(taskToDelete.id, {
+                                        onSuccess: () => {
+                                            addToast('Task deleted successfully', 'success');
+                                            setTaskToDelete(null);
+                                        },
+                                        onError: (err) => {
+                                            addToast(err.response?.data?.detail || 'Could not delete task', 'error');
+                                        }
+                                    });
+                                }
+                            }}
+                        >
+                            Delete Task
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </MainLayout>
     );

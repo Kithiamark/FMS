@@ -1,0 +1,15 @@
+meta {
+  name: "List Animals"
+  type: "http"
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/animals/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -5,10 +5,13 @@ import api from '../../api/axios';
 import { AdminLayout } from '../../components/Layout/AdminLayout';
 import { 
   Users, CreditCard, TrendingUp, Activity, AlertCircle, 
-  ArrowUpRight, ArrowDownRight, Stethoscope, KeyRound, Copy, Check, RefreshCw
+  ArrowUpRight, ArrowDownRight, Stethoscope, KeyRound, Copy, Check, RefreshCw,
+  Sparkles, Search
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-
+import { useAdminAnomalies, useAdminAskData } from '../../hooks/useAI';
+import { StatCard } from '../../components/ui/StatCard';
+import { Skeleton, SkeletonStatGrid } from '../../components/ui/Skeleton';
 const fetchAdminStats = async () => {
     const { data } = await api.get('/admin/stats/');
     return data;
@@ -19,29 +22,6 @@ const fetchRecentOTPs = async () => {
     return data;
 };
 
-const StatCard = ({ title, value, subtext, trend, icon, color = "text-admin-accent" }) => (
-    <div className="bg-admin-card border border-gray-800 rounded-xl p-6 flex flex-col justify-between">
-        <div className="flex justify-between items-start mb-4">
-            <div>
-                <p className="text-admin-text-muted text-xs font-medium uppercase tracking-wider">{title}</p>
-                <h3 className="text-2xl font-heading font-bold text-white mt-1">{value}</h3>
-            </div>
-            <div className={`p-2 rounded-lg bg-gray-800/50 ${color}`}>
-                {React.createElement(icon, { size: 20 })}
-            </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-            {trend && (
-                <span className={`flex items-center gap-1 font-medium ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {trend > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                    {Math.abs(trend)}%
-                </span>
-            )}
-            <span className="text-gray-500">{subtext || "vs last month"}</span>
-        </div>
-    </div>
-);
-
 const AdminDashboard = () => {
     const { data, isLoading } = useQuery({ queryKey: ['adminStats'], queryFn: fetchAdminStats });
     const { data: recentOTPs = [], refetch: refetchOTPs, isFetching: isFetchingOTPs } = useQuery({
@@ -49,7 +29,12 @@ const AdminDashboard = () => {
         queryFn: fetchRecentOTPs,
         refetchInterval: 10000 // Poll every 10s for live OTPs
     });
+    const { data: anomalies = [] } = useAdminAnomalies();
+    const askDataMutation = useAdminAskData();
+
     const [copiedOtpId, setCopiedOtpId] = useState(null);
+    const [askDataQuery, setAskDataQuery] = useState('');
+    const [askDataResult, setAskDataResult] = useState(null);
 
     const handleCopyOtp = (code, id) => {
         navigator.clipboard.writeText(code);
@@ -66,24 +51,115 @@ const AdminDashboard = () => {
         { name: 'Buyer Route', value: (data?.active_subscriptions?.buyer_starter || 0) + (data?.active_subscriptions?.buyer_commercial || 0), color: '#10b981' },
     ];
 
-    if (isLoading) return <AdminLayout><div className="text-white p-8">Loading analytics...</div></AdminLayout>;
+    if (isLoading) {
+        return (
+            <AdminLayout>
+                <div className="space-y-6">
+                    <Skeleton className="h-10 w-64" />
+                    <SkeletonStatGrid count={6} />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Skeleton className="h-80 lg:col-span-2 rounded-2xl" />
+                        <Skeleton className="h-80 rounded-2xl" />
+                    </div>
+                </div>
+            </AdminLayout>
+        );
+    }
 
     return (
         <AdminLayout>
             <div className="space-y-6">
                 <div className="flex justify-between items-end">
-                    <h1 className="text-2xl font-heading font-bold text-white">Platform Overview</h1>
+                    <div>
+                        <h1 className="text-2xl font-heading font-bold text-white">Platform Overview</h1>
+                        <p className="text-xs text-slate-400 mt-1">Multi-tenant telemetry, subscription health, and security controls</p>
+                    </div>
                     <span className="text-xs font-mono text-gray-500">LAST UPDATED: {new Date().toLocaleTimeString()}</span>
+                </div>
+
+                {/* Arvion AI Platform Anomaly Detection Banner */}
+                {anomalies && anomalies.length > 0 && (
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles size={14} className="text-amber-400" /> Arvion AI Anomaly Watchlist
+                            </span>
+                            <span className="text-[11px] text-amber-300 font-semibold">{anomalies.length} Flagged Pattern{anomalies.length > 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            {anomalies.map((a, i) => (
+                                <div key={i} className="bg-slate-900/80 border border-amber-500/20 rounded-xl p-3 text-xs space-y-1">
+                                    <div className="flex justify-between items-baseline">
+                                        <span className="font-bold text-amber-200">{a.title}</span>
+                                        <span className="text-[10px] text-amber-400/90 font-mono uppercase">{a.severity}</span>
+                                    </div>
+                                    <p className="text-slate-300 text-[11px] leading-relaxed">{a.description}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Arvion AI "Ask the Data" Natural Language Query Box */}
+                <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-slate-900 via-blue-950/40 to-slate-900 p-4 shadow-lg space-y-3">
+                    <div className="flex items-center gap-2">
+                        <Sparkles size={16} className="text-blue-400" />
+                        <span className="text-xs font-bold text-blue-200 uppercase tracking-wider">Arvion AI — Ask the Data</span>
+                    </div>
+                    <form 
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (!askDataQuery.trim() || askDataMutation.isPending) return;
+                            askDataMutation.mutate(askDataQuery, {
+                                onSuccess: (res) => setAskDataResult(res)
+                            });
+                        }} 
+                        className="flex gap-2"
+                    >
+                        <div className="relative flex-1">
+                            <Search size={15} className="absolute left-3.5 top-3 text-slate-400" />
+                            <input
+                                type="text"
+                                value={askDataQuery}
+                                onChange={(e) => setAskDataQuery(e.target.value)}
+                                placeholder="e.g. Which sub-counties had the highest milk churn this month?"
+                                className="w-full pl-10 pr-4 py-2 bg-slate-950/70 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={!askDataQuery.trim() || askDataMutation.isPending}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs touch-target shrink-0 flex items-center gap-1.5"
+                        >
+                            <Sparkles size={13} />
+                            {askDataMutation.isPending ? 'Analyzing...' : 'Query'}
+                        </button>
+                    </form>
+
+                    {askDataResult && (
+                        <div className="bg-slate-950/90 border border-blue-500/30 rounded-xl p-3.5 text-xs space-y-2 animate-in fade-in duration-200">
+                            <div className="flex justify-between items-baseline border-b border-slate-800 pb-1.5">
+                                <span className="font-bold text-blue-300">Analysis Summary</span>
+                                <button type="button" onClick={() => setAskDataResult(null)} className="text-[10px] text-slate-400 hover:text-white">&times; Close</button>
+                            </div>
+                            <p className="text-slate-200 text-xs leading-relaxed">{askDataResult.answer}</p>
+                            {askDataResult.data_points && (
+                                <div className="text-[11px] text-slate-400 pt-1 font-mono">
+                                    Metrics: {JSON.stringify(askDataResult.data_points)}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* KPI Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                    <StatCard title="Total Farmers" value={data?.total_farmers ?? 0} trend={12} icon={Users} color="text-blue-500" />
-                    <StatCard title="Active Subs" value={Object.values(data?.active_subscriptions || {}).reduce((a, b) => a + b, 0)} trend={5} icon={CreditCard} color="text-green-500" />
-                    <StatCard title="MRR (KES)" value={`Ksh ${(data?.monthly_revenue_kes || 0).toLocaleString()}`} trend={8.2} icon={TrendingUp} color="text-yellow-500" />
-                    <StatCard title="Total Vets" value={data?.total_vets ?? 0} subtext="Total registered" icon={Stethoscope} color="text-purple-500" />
-                    <StatCard title="System Errors" value={data?.system_errors_24h ?? 0} subtext="Last 24h" icon={AlertCircle} color="text-red-500" />
-                    <StatCard title="Churn Rate" value={`${data?.churn_rate ?? 0}%`} subtext="All-time churn" icon={Activity} color="text-gray-400" />
+                    <StatCard title="Total Farmers" value={data?.total_farmers ?? 0} trend={12} icon={Users} accent="blue" />
+                    <StatCard title="Active Subs" value={Object.values(data?.active_subscriptions || {}).reduce((a, b) => a + b, 0)} trend={5} icon={CreditCard} accent="emerald" />
+                    <StatCard title="MRR (KES)" value={`Ksh ${(data?.monthly_revenue_kes || 0).toLocaleString()}`} trend={8.2} icon={TrendingUp} accent="amber" />
+                    <StatCard title="Total Vets" value={data?.total_vets ?? 0} subtext="Total registered" icon={Stethoscope} accent="vet" />
+                    <StatCard title="System Errors" value={data?.system_errors_24h ?? 0} subtext="Last 24h" icon={AlertCircle} accent="red" />
+                    <StatCard title="Churn Rate" value={`${data?.churn_rate ?? 0}%`} subtext="All-time churn" icon={Activity} accent="admin" />
                 </div>
 
                 {/* Charts Row */}

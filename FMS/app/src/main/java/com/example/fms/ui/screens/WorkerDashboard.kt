@@ -20,11 +20,15 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fms.data.model.FarmTask
-import com.example.fms.ui.components.common.HeroHeader
 import com.example.fms.ui.components.cards.IslandCard
+import com.example.fms.ui.components.common.HeroHeader
+import com.example.fms.ui.components.common.InsetGroup
+import com.example.fms.ui.components.common.InsetRow
 import com.example.fms.ui.components.common.PillBadge
+import com.example.fms.ui.components.modals.IslandModal
 import com.example.fms.ui.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkerDashboard(
     onNavigateToMilkLog: () -> Unit = {}
@@ -49,32 +53,136 @@ fun WorkerDashboard(
     val completedCount = chores.count { it.status == "COMPLETED" }
     val progress = if (chores.isNotEmpty()) completedCount.toFloat() / chores.size else 0f
 
-    LazyColumn(
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // 1. Hero Island
-        item {
-            HeroHeader(
-                title = "Farm Operations",
-                subtitle = "Assigned to Barn Alpha • Morning & Midday Shift",
-                roleBadge = "Field Worker",
-                onNotificationClick = {}
-            )
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(bottom = 110.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // 1. Hero Header integrated seamlessly into scroll flow
+            item {
+                HeroHeader(
+                    title = "Farm Operations",
+                    subtitle = "Assigned to Barn Alpha • Morning & Midday Shift",
+                    roleBadge = "FIELD WORKER"
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // 2. Shift Milking & Logging Inset Group
+            item {
+                InsetGroup(
+                    header = "Active Milking Session",
+                    footer = "Milk entries require OTP authorization from farm manager for edits or deletions."
+                ) {
+                    InsetRow(
+                        title = "Logged This Session",
+                        subtitle = "Morning milking in Barn Alpha",
+                        leadingIcon = Icons.Rounded.WaterDrop,
+                        iconTint = EmeraldPrimary,
+                        iconBackgroundColor = EmeraldPrimary.copy(alpha = 0.12f),
+                        trailingText = "${"%.1f".format(sessionLitresLogged)} L",
+                        trailingBadge = "Active",
+                        badgeColor = EmeraldPrimary,
+                        showChevron = true,
+                        onClick = onNavigateToMilkLog
+                    )
+                    InsetRow(
+                        title = "Open Milking Keypad",
+                        subtitle = "Rapid cow-tag yield numpad",
+                        leadingIcon = Icons.Rounded.Dialpad,
+                        iconTint = ForestGreen,
+                        iconBackgroundColor = ForestGreen.copy(alpha = 0.12f),
+                        showChevron = true,
+                        showDivider = false,
+                        onClick = onNavigateToMilkLog
+                    )
+                }
+            }
+
+            // 3. Shift Chores Inset Group
+            item {
+                InsetGroup(
+                    header = "Shift Chores ($completedCount/${chores.size})",
+                    footer = "Tap any chore to cycle status (Pending ➔ In Progress ➔ Completed)."
+                ) {
+                    chores.forEachIndexed { index, chore ->
+                        val isDone = chore.status == "COMPLETED"
+                        val inProgress = chore.status == "IN_PROGRESS"
+
+                        val statusIcon = when {
+                            isDone -> Icons.Rounded.CheckCircle
+                            inProgress -> Icons.Rounded.HourglassTop
+                            else -> Icons.Rounded.RadioButtonUnchecked
+                        }
+
+                        val statusColor = when {
+                            isDone -> EmeraldPrimary
+                            inProgress -> GoldAmber
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        }
+
+                        InsetRow(
+                            title = chore.title,
+                            subtitle = "${chore.description} • Due: ${chore.dueDate}",
+                            leadingIcon = statusIcon,
+                            iconTint = statusColor,
+                            iconBackgroundColor = statusColor.copy(alpha = 0.12f),
+                            trailingBadge = chore.status.replace("_", " "),
+                            badgeColor = statusColor,
+                            showChevron = false,
+                            showDivider = index < chores.size - 1,
+                            onClick = {
+                                val nextStatus = when (chore.status) {
+                                    "PENDING" -> "IN_PROGRESS"
+                                    "IN_PROGRESS" -> "COMPLETED"
+                                    else -> "PENDING"
+                                }
+                                chores = chores.map {
+                                    if (it.id == chore.id) it.copy(status = nextStatus) else it
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(110.dp))
+            }
         }
 
-        // 2. Overlapping Shift Progress Island
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-28).dp)
-                    .padding(horizontal = 16.dp)
+        if (showMilkDialog) {
+            ModalBottomSheet(
+                onDismissRequest = { showMilkDialog = false },
+                containerColor = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                dragHandle = {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 10.dp, bottom = 6.dp)
+                            .width(36.dp)
+                            .height(5.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    )
+                }
             ) {
-                IslandCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = 6.dp
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                        .navigationBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -83,301 +191,81 @@ fun WorkerDashboard(
                     ) {
                         Column {
                             Text(
-                                text = "SHIFT PROGRESS",
-                                fontSize = 11.sp,
+                                text = "Quick Milk Entry",
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "$completedCount of ${chores.size} Chores Done",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
+                            Text(
+                                text = "Record measured litres for this shift session",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
+
                         PillBadge(
-                            text = "${(progress * 100).toInt()}%",
-                            containerColor = if (progress >= 1f) EmeraldPrimary.copy(alpha = 0.2f) else SkyBlue.copy(alpha = 0.2f),
-                            contentColor = if (progress >= 1f) EmeraldPrimary else SkyBlue
+                            text = "Shift Milking",
+                            containerColor = EmeraldPrimary.copy(alpha = 0.15f),
+                            contentColor = EmeraldPrimary
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = EmeraldPrimary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(EmeraldPrimary)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "$completedCount Done",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(GoldAmber)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "${chores.count { it.status == "IN_PROGRESS" }} In Progress",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "${chores.count { it.status == "PENDING" }} Pending",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3. Quick Milking Session Island
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-16).dp)
-                    .padding(horizontal = 16.dp)
-            ) {
-                IslandCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = 4.dp
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(EmeraldPrimary.copy(alpha = 0.15f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.WaterDrop,
-                                    contentDescription = "Milking Session",
-                                    tint = EmeraldPrimary,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "Milking Session Active",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Logged: ${"%.1f".format(sessionLitresLogged)} L recorded today",
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-
-                        Button(
-                            onClick = { showMilkDialog = true },
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
-                        ) {
-                            Icon(Icons.Rounded.Add, contentDescription = "Add", modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Log Cow", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        }
-                    }
-                }
-            }
-        }
-
-        // 4. Role Safeguard Notice Island
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-8).dp)
-                    .padding(horizontal = 16.dp)
-            ) {
-                IslandCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                    borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                    elevation = 1.dp
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Security,
-                            contentDescription = "Safeguard",
-                            tint = SkyBlue,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Worker mode: Milk entries require OTP authorization from farm manager for edits or deletions.",
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-        }
-
-        // 5. Section Title: Chores & Tasks
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Shift Chores",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Tap circle to cycle status",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-            }
-        }
-
-        // 6. Chores Interactive List
-        items(chores) { chore ->
-            WorkerChoreItem(
-                task = chore,
-                onStatusCycle = {
-                    val nextStatus = when (chore.status) {
-                        "PENDING" -> "IN_PROGRESS"
-                        "IN_PROGRESS" -> "COMPLETED"
-                        else -> "PENDING"
-                    }
-                    chores = chores.map {
-                        if (it.id == chore.id) it.copy(status = nextStatus) else it
-                    }
-                }
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(80.dp))
-        }
-    }
-
-    if (showMilkDialog) {
-        AlertDialog(
-            onDismissRequest = { showMilkDialog = false },
-            title = {
-                Text(
-                    text = "Log Cow Milk Yield",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Enter individual cow ear tag and measured litres for this shift session.",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
                     OutlinedTextField(
                         value = cowTagInput,
                         onValueChange = { cowTagInput = it },
-                        label = { Text("Cow Ear Tag (e.g. #204)") },
+                        label = { Text("Cow Ear Tag *") },
+                        placeholder = { Text("e.g. #104 or 104") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
+
                     OutlinedTextField(
                         value = yieldInput,
                         onValueChange = { yieldInput = it },
-                        label = { Text("Litres Produced (e.g. 14.5)") },
+                        label = { Text("Litres Produced (L) *") },
+                        placeholder = { Text("e.g. 14.5") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showMilkDialog = false },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Cancel", fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Button(
+                            onClick = {
+                                val added = yieldInput.toDoubleOrNull() ?: 0.0
+                                sessionLitresLogged += added
+                                cowTagInput = ""
+                                yieldInput = ""
+                                showMilkDialog = false
+                            },
+                            modifier = Modifier.weight(1.5f).height(48.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Save Entry", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val added = yieldInput.toDoubleOrNull() ?: 0.0
-                        sessionLitresLogged += added
-                        cowTagInput = ""
-                        yieldInput = ""
-                        showMilkDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("Save Entry")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showMilkDialog = false }) {
-                    Text("Cancel")
-                }
-            },
-            shape = RoundedCornerShape(20.dp)
-        )
+            }
+        }
     }
 }
 

@@ -66,6 +66,7 @@ const Settings = () => {
   };
 
   const [activeModal, setActiveModal] = useState(null);
+  const [workerToDelete, setWorkerToDelete] = useState(null);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
   const [mpesaReceiptCode, setMpesaReceiptCode] = useState('');
   const [isSubmittingMpesa, setIsSubmittingMpesa] = useState(false);
@@ -258,12 +259,8 @@ const Settings = () => {
   };
 
   const handleDeleteWorker = (id) => {
-    if(window.confirm('Are you sure you want to delete this worker account?')) {
-      deleteWorker.mutate(id, {
-        onSuccess: () => addToast('Worker account deleted.', 'success'),
-        onError: () => addToast('Could not delete worker.', 'error'),
-      });
-    }
+    setWorkerToDelete(id);
+    setActiveModal('delete_worker');
   };
 
 
@@ -718,6 +715,44 @@ const Settings = () => {
           </div>
           <Button type="submit" disabled={createWorker.isPending || updateWorker.isPending} className="w-full">{editingWorkerId ? 'Update Worker' : 'Create Worker'}</Button>
         </form>
+      </Modal>
+
+      {/* DELETE WORKER CONFIRMATION MODAL */}
+      <Modal
+        isOpen={activeModal === 'delete_worker'}
+        onClose={() => { setActiveModal(null); setWorkerToDelete(null); }}
+        title="Delete Worker Account"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Are you sure you want to delete this worker account? They will lose immediate access to the farm mobile app and logging interfaces.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setActiveModal(null); setWorkerToDelete(null); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteWorker.isPending}
+              onClick={() => {
+                if (workerToDelete) {
+                  deleteWorker.mutate(workerToDelete, {
+                    onSuccess: () => {
+                      addToast('Worker account deleted.', 'success');
+                      setActiveModal(null);
+                      setWorkerToDelete(null);
+                    },
+                    onError: () => addToast('Could not delete worker.', 'error'),
+                  });
+                }
+              }}
+            >
+              Delete Account
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* M-PESA PAYMENT MODAL */}

@@ -1,0 +1,27 @@
+meta {
+  name: "Create Animal"
+  type: "http"
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/animals/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "Bessie",
+    "ear_tag": "KE-KBU-042",
+    "breed": "Friesian",
+    "sex": "Cow",
+    "stage": "Lactating",
+    "health_status": "Healthy",
+    "date_of_birth": "2022-03-15"
+  }
+}

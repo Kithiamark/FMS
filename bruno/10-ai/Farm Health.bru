@@ -1,0 +1,15 @@
+meta {
+  name: "Farm Health Overview"
+  type: "http"
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/ai/farm-health/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

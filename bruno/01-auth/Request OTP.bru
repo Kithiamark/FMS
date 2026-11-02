@@ -1,0 +1,21 @@
+meta {
+  name: "Request OTP"
+  type: "http"
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/request-otp/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "action": "UPDATE_PROFILE"
+  }
+}

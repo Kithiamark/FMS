@@ -1,16 +1,21 @@
 package com.example.fms
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.fms.data.model.CattleRecord
 import com.example.fms.data.model.UserRole
@@ -34,6 +39,8 @@ import com.example.fms.ui.screens.farmer.finance.FinanceScreen
 import com.example.fms.ui.screens.farmer.herd.AnimalDetailScreen
 import com.example.fms.ui.screens.farmer.herd.HerdOverviewScreen
 import com.example.fms.ui.screens.farmer.milk.DailyMilkEntryScreen
+import com.example.fms.ui.screens.farmer.milk.MilkAllocationScreen
+import com.example.fms.ui.screens.farmer.ai.AIOverviewScreen
 import com.example.fms.ui.screens.farmer.vets.FindVetScreen
 import com.example.fms.ui.screens.settings.SettingsScreen
 import com.example.fms.ui.screens.worker.MilkingKeypadScreen
@@ -46,6 +53,8 @@ enum class AppDestination {
     OTP_VERIFY,
     MAIN_APP,
     DAILY_MILK_ENTRY,
+    MILK_ALLOCATION,
+    AI_OVERVIEW,
     HERD_OVERVIEW,
     ANIMAL_DETAIL,
     FINANCE,
@@ -92,6 +101,18 @@ fun AppRootNavigation() {
             )
         }
         AppDestination.LOGIN -> {
+            val loginContext = LocalContext.current
+            var loginBackPressedTime by remember { mutableLongStateOf(0L) }
+            BackHandler {
+                val now = System.currentTimeMillis()
+                if (now - loginBackPressedTime < 2000L) {
+                    (loginContext as? ComponentActivity)?.finish()
+                } else {
+                    loginBackPressedTime = now
+                    Toast.makeText(loginContext, "Press back again to exit FMS", Toast.LENGTH_SHORT).show()
+                }
+            }
+
             LoginScreen(
                 onLoginSuccess = { phone, role ->
                     pendingPhoneOrEmail = phone
@@ -175,10 +196,39 @@ fun MainAppShell(
     onLogout: () -> Unit
 ) {
     var selectedNavTab by remember { mutableStateOf(MainNavTab.DASHBOARD) }
+    val context = LocalContext.current
+    var backPressedTime by remember { mutableLongStateOf(0L) }
+
+    // Smart Back Button Interception
+    BackHandler {
+        when {
+            // 1. If currently inside a sub-screen (e.g. Animal Detail, Milk Allocation, Keypad), return to parent or main app
+            currentSubDestination == AppDestination.ANIMAL_DETAIL -> {
+                onNavigateTo(AppDestination.HERD_OVERVIEW)
+            }
+            currentSubDestination != AppDestination.MAIN_APP -> {
+                onNavigateTo(AppDestination.MAIN_APP)
+            }
+            // 2. If inside a non-home tab (e.g. Chat, Feed, Settings), jump back to Home Dashboard tab
+            selectedNavTab != MainNavTab.DASHBOARD -> {
+                selectedNavTab = MainNavTab.DASHBOARD
+            }
+            // 3. If on Home Dashboard tab, require double-back press within 2 seconds before exiting
+            else -> {
+                val now = System.currentTimeMillis()
+                if (now - backPressedTime < 2000L) {
+                    (context as? ComponentActivity)?.finish()
+                } else {
+                    backPressedTime = now
+                    Toast.makeText(context, "Press back again to exit FMS", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     // Role-adaptive bottom bar configuration matching web routes
     val secondaryTabConfig = when (activeRole) {
-        UserRole.FARMER -> Pair("Herd", Icons.Rounded.Pets)
+        UserRole.FARMER -> Pair("Herd", com.example.fms.ui.theme.CowIcon)
         UserRole.FARM_WORKER -> Pair("Keypad", Icons.Rounded.Dialpad)
         UserRole.VETERINARIAN -> Pair("Records", Icons.Rounded.Assignment)
         UserRole.AGGREGATOR -> Pair("Network", Icons.Rounded.Hub)
@@ -193,26 +243,14 @@ fun MainAppShell(
         BottomNavItem(MainNavTab.SETTINGS.name, "More", Icons.Rounded.Settings)
     )
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        bottomBar = {
-            IslandBottomBar(
-                items = bottomNavItems,
-                selectedId = selectedNavTab.name,
-                onItemSelected = { selectedName ->
-                    selectedNavTab = MainNavTab.valueOf(selectedName)
-                    // If returning from sub-destination, navigate back to MAIN_APP
-                    if (currentSubDestination != AppDestination.MAIN_APP) {
-                        onNavigateTo(AppDestination.MAIN_APP)
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Full screen content layer (scrolls behind the floating island)
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = innerPadding.calculateBottomPadding())
+            modifier = Modifier.fillMaxSize()
         ) {
             if (currentSubDestination != AppDestination.MAIN_APP) {
                 // Render sub-screens inside the shell so IslandBottomBar persists!
@@ -221,6 +259,20 @@ fun MainAppShell(
                         DailyMilkEntryScreen(
                             onBackClick = { onNavigateTo(AppDestination.MAIN_APP) },
                             onSubmitSuccess = { onNavigateTo(AppDestination.MAIN_APP) }
+                        )
+                    }
+                    AppDestination.MILK_ALLOCATION -> {
+                        MilkAllocationScreen(
+                            totalYield = 126.5,
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) },
+                            onAllocationSaved = { _, _, _, _, _ -> onNavigateTo(AppDestination.MAIN_APP) }
+                        )
+                    }
+                    AppDestination.AI_OVERVIEW -> {
+                        AIOverviewScreen(
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) },
+                            onConsultVetClick = { onNavigateTo(AppDestination.FIND_VET) },
+                            onUpgradePlanClick = { /* User can change tier or settings */ }
                         )
                     }
                     AppDestination.HERD_OVERVIEW -> {
@@ -275,6 +327,7 @@ fun MainAppShell(
                             when (activeRole) {
                                 UserRole.FARMER -> FarmerDashboard(
                                     onNavigateToRecordMilk = { onNavigateTo(AppDestination.DAILY_MILK_ENTRY) },
+                                    onNavigateToAllocation = { onNavigateTo(AppDestination.MILK_ALLOCATION) },
                                     onNavigateToHerd = { onNavigateTo(AppDestination.HERD_OVERVIEW) },
                                     onNavigateToFinance = { onNavigateTo(AppDestination.FINANCE) }
                                 )
@@ -308,7 +361,8 @@ fun MainAppShell(
                         }
                         MainNavTab.COMMUNITY -> {
                             CommunityScreen(
-                                onOpenDirectMessage = onOpenDirectMessage
+                                onOpenDirectMessage = onOpenDirectMessage,
+                                onNavigateToAIOverview = { onNavigateTo(AppDestination.AI_OVERVIEW) }
                             )
                         }
                         MainNavTab.MESSAGES -> {
@@ -325,5 +379,18 @@ fun MainAppShell(
                 }
             }
         }
+
+        // True Floating Island Navigation Bar Overlay
+        IslandBottomBar(
+            items = bottomNavItems,
+            selectedId = selectedNavTab.name,
+            onItemSelected = { selectedName ->
+                selectedNavTab = MainNavTab.valueOf(selectedName)
+                if (currentSubDestination != AppDestination.MAIN_APP) {
+                    onNavigateTo(AppDestination.MAIN_APP)
+                }
+            },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }

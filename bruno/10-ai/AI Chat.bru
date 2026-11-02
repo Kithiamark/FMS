@@ -1,0 +1,25 @@
+meta {
+  name: "Arvion AI Chat"
+  type: "http"
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/ai/chat/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "message": "What is the recommended concentrate ration for a 20L lactating Friesian cow?",
+    "history": [],
+    "roleContext": {
+      "role": "FARMER"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAIChat } from '../../hooks/useAI';
+import { useAIChat, useAIFeedback } from '../../hooks/useAI';
+import { useAuth } from '../../context/AuthContext';
 import { 
     Sparkles, 
     Send, 
@@ -7,46 +8,87 @@ import {
     User, 
     RotateCcw, 
     CheckCircle2, 
-    AlertCircle, 
-    Building2, 
     Activity, 
-    Droplets,
-    ChevronDown,
-    ChevronUp
+    X,
+    Maximize2,
+    Minimize2,
+    Copy,
+    Check,
+    ThumbsUp,
+    ThumbsDown
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 
-const QUICK_PROMPTS = [
-    { label: '🥛 Feed & Milk Optimization', query: 'What is the optimal feed and concentrate ration for my high-yielding dairy cows?' },
-    { label: '🩺 Mastitis & Udder Health', query: 'How do I detect and prevent subclinical mastitis in my milking herd?' },
-    { label: '🐄 Heat Detection & AI Timing', query: 'What is the AM-PM rule for heat detection and artificial insemination?' },
-    { label: '🤝 Connect to Milk Buyers', query: 'How do I connect to reliable milk buyers and aggregators in my area?' },
-    { label: '🍼 Calf Care & Colostrum', query: 'What are the critical colostrum and early feeding guidelines for newborn calves?' },
-];
+// Role-tailored prompt suggestions
+const ROLE_SUGGESTIONS = {
+    FARMER: [
+        { label: '🥛 Ration Optimizer', query: 'Recommend a cost-effective total mixed ration (TMR) for a 22L/day Friesian cow using Napier grass and dairy meal.' },
+        { label: '🐄 Heat Detection Rule', query: 'What are the primary signs of standing heat and the AM-PM breeding timing rule?' },
+        { label: '🩺 Mastitis Early Signs', query: 'How do I detect subclinical mastitis early before clots appear in the strip cup?' },
+        { label: '🤝 Off-taker Best Practices', query: 'What lactometer and temperature standards do aggregators expect during morning collection?' }
+    ],
+    FARM_WORKER: [
+        { label: '📋 Udder Prep Hygiene', query: 'What is the step-by-step pre-milking routine to prevent udder infections?' },
+        { label: '🍼 Newborn Colostrum Care', query: 'How many litres of colostrum should a calf receive within the first 6 hours of birth?' },
+        { label: '🔍 Heat Check Signs', query: 'What behavioral signs should I observe in the pens to flag a cow in heat for the farmer?' }
+    ],
+    VETERINARIAN: [
+        { label: '🩺 Differential Diagnosis', query: 'What are the key differentials for an acute drop in milk yield, fever (40.5°C), and swollen prescapular lymph nodes in Kiambu?' },
+        { label: '💊 Antibiotic Withdrawal', query: 'What is the standard milk withdrawal period for procaine penicillin and oxytetracycline in dairy cattle?' },
+        { label: '📋 Visit Brief Template', query: 'Generate a checklist for a routine herd reproductive and ultrasound synchronization visit.' }
+    ],
+    AGGREGATOR: [
+        { label: '🥛 Density & Dilution Check', query: 'If a morning batch has a lactometer reading of 1.022 sp.gr at 20°C, what is the estimated water adulteration percentage?' },
+        { label: '🧪 68% Alcohol Test', query: 'How does the 68% ethanol platform test detect high titratable acidity in bulk milk tanks?' },
+        { label: '🚛 Cold Chain Management', query: 'What are the critical temperature holding limits during multi-stop route transport?' }
+    ],
+    ADMIN: [
+        { label: '📊 Platform Anomaly Audit', query: 'What metrics indicate anomalous milk yield reporting or sudden connection drop-offs?' },
+        { label: '🛡️ Compliance & KYC Review', query: 'What verification steps are required for new commercial off-takers and licensed vets?' }
+    ]
+};
 
-export const AIAssistantWidget = ({ initialContext }) => {
+export const AIAssistantWidget = ({ 
+    initialContext, 
+    isOpen = false, 
+    onClose, 
+    roleOverride,
+    inline = false 
+}) => {
+    const { user } = useAuth();
+    const role = roleOverride || user?.role || 'FARMER';
+    const suggestions = ROLE_SUGGESTIONS[role] || ROLE_SUGGESTIONS.FARMER;
+
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [copiedIndex, setCopiedIndex] = useState(null);
+    const [feedbackState, setFeedbackState] = useState({}); // { [idx]: 'UP' | 'DOWN' }
+
+    const initialGreeting = `Hello! I am your Arvion AI Advisor. I am role-aware and grounded in your Kenyan dairy records (${role.replace('_', ' ')}). How can I assist you today?`;
+
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: 'Hello! I am your Arvion AI Farm Advisor. I am grounded with your live farm data to provide real-time recommendations on feed rations, mastitis control, breeding, and aggregator marketing. How can I help you today?',
+            content: initialGreeting,
             provider: 'arvion-dairy-knowledge-base',
             mode: 'live',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }
     ]);
     const [input, setInput] = useState('');
-    const [farmContext, setFarmContext] = useState(initialContext || null);
-    const [showContextDetails, setShowContextDetails] = useState(false);
     const messagesEndRef = useRef(null);
+
     const chatMutation = useAIChat();
+    const feedbackMutation = useAIFeedback();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages, chatMutation.isPending]);
+        if (isOpen) {
+            scrollToBottom();
+        }
+    }, [messages, chatMutation.isPending, isOpen]);
 
     const handleSend = async (messageToSend) => {
         const text = (messageToSend || input).trim();
@@ -69,30 +111,36 @@ export const AIAssistantWidget = ({ initialContext }) => {
         }));
 
         chatMutation.mutate(
-            { message: text, history },
+            { 
+                message: text, 
+                history,
+                roleContext: {
+                    role,
+                    userName: user?.full_name,
+                    ...(initialContext || {})
+                }
+            },
             {
                 onSuccess: (data) => {
-                    if (data.farm_context) {
-                        setFarmContext(data.farm_context);
-                    }
                     setMessages(prev => [
                         ...prev,
                         {
                             role: 'assistant',
                             content: data.response,
-                            provider: data.provider,
-                            mode: data.mode,
+                            provider: data.provider || 'arvion-ai',
+                            mode: data.mode || 'live',
                             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                         }
                     ]);
                 },
                 onError: () => {
+                    // Graceful fallback response
                     setMessages(prev => [
                         ...prev,
                         {
                             role: 'assistant',
-                            content: 'Sorry, I encountered an issue connecting to the dairy knowledge service. Please check your connection and try again.',
-                            provider: 'system-error',
+                            content: 'I am currently unable to connect to the Arvion AI knowledge engine. Please verify your connection or retry in a few moments.',
+                            provider: 'system-fallback',
                             isError: true,
                             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                         }
@@ -106,117 +154,165 @@ export const AIAssistantWidget = ({ initialContext }) => {
         setMessages([
             {
                 role: 'assistant',
-                content: 'Chat history cleared. What dairy management or farm question can I assist you with?',
+                content: 'Chat session reset. What dairy management or clinical query can I help you analyze?',
                 provider: 'arvion-dairy-knowledge-base',
                 mode: 'live',
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             }
         ]);
+        setFeedbackState({});
     };
 
+    const handleCopy = (content, idx) => {
+        navigator.clipboard?.writeText(content);
+        setCopiedIndex(idx);
+        setTimeout(() => setCopiedIndex(null), 2000);
+    };
+
+    const handleFeedback = (idx, score) => {
+        setFeedbackState(prev => ({ ...prev, [idx]: score }));
+        feedbackMutation.mutate({
+            messageId: `msg_${idx}`,
+            score,
+            role
+        });
+    };
+
+    if (!inline && !isOpen) return null;
+
+    const containerClasses = inline
+        ? "w-full rounded-2xl border border-slate-200/90 shadow-card flex flex-col bg-white overflow-hidden h-[620px]"
+        : `fixed bottom-0 right-0 z-50 transition-all duration-300 ease-in-out shadow-2xl flex flex-col bg-white border-l border-t border-slate-200/90 ${
+            isExpanded 
+                ? 'w-full md:w-[680px] h-[92vh] md:rounded-tl-3xl' 
+                : 'w-full md:w-[440px] h-[640px] md:rounded-tl-2xl'
+        }`;
+
     return (
-        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden flex flex-col h-[650px] relative">
+        <aside
+            role="dialog"
+            aria-label="Arvion AI Assistant Drawer"
+            className={containerClasses}
+        >
             {/* Header */}
-            <div className="p-4 md:p-5 bg-gradient-to-r from-forest-green to-forest-green/90 text-white flex items-center justify-between shadow-sm">
+            <div className="p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between border-b border-white/10 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-amber-300 shadow-inner">
-                        <Sparkles size={22} />
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 shadow-inner">
+                        <Sparkles size={18} />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="font-heading font-bold text-lg leading-tight">Arvion AI Farm Assistant</h2>
-                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                {chatMutation.data?.provider === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : 'Active'}
+                            <h2 className="font-heading font-bold text-sm leading-tight text-white">Arvion AI</h2>
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 uppercase tracking-wider">
+                                {role.replace('_', ' ')}
                             </span>
                         </div>
-                        <p className="text-xs text-green-100">Live Kenyan Dairy Management & Herd Intelligence</p>
+                        <p className="text-[11px] text-slate-300">Live Kenyan Dairy Herd & Supply Intelligence</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    {farmContext && (
-                        <button
-                            onClick={() => setShowContextDetails(!showContextDetails)}
-                            className="hidden sm:flex items-center gap-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1 rounded-lg transition-colors text-white"
-                        >
-                            <Building2 size={13} />
-                            <span>{farmContext.farm_name || 'Farm Data'}</span>
-                            {showContextDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                        </button>
-                    )}
+                <div className="flex items-center gap-1">
                     <button
+                        type="button"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition touch-target"
+                        title={isExpanded ? 'Minimize' : 'Expand'}
+                    >
+                        {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                    </button>
+                    <button
+                        type="button"
                         onClick={handleClearChat}
                         title="Reset Chat"
-                        className="p-1.5 text-green-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                        className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition touch-target"
                     >
                         <RotateCcw size={16} />
                     </button>
+                    {onClose && (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            title="Close Drawer"
+                            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition touch-target"
+                        >
+                            <X size={18} />
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* Farm Context Drawer */}
-            {farmContext && showContextDetails && (
-                <div className="bg-emerald-50/80 border-b border-emerald-100 px-4 py-3 text-xs text-gray-700 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-1">
-                    <div className="flex items-center gap-1.5 font-medium text-forest-green">
-                        <Building2 size={14} />
-                        <span>{farmContext.farm_name} ({farmContext.county})</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <Activity size={14} className="text-gray-500" />
-                        <span>Herd: <strong>{farmContext.active_animals || 0}</strong> active ({farmContext.sick_animals || 0} sick)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <Droplets size={14} className="text-blue-600" />
-                        <span>7-Day Milk: <strong>{farmContext.last_7_days_milk_litres || 0} L</strong></span>
-                    </div>
-                </div>
-            )}
-
             {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 bg-gray-50/60">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/70">
                 {messages.map((msg, idx) => {
                     const isAssistant = msg.role === 'assistant';
                     return (
                         <div
                             key={idx}
-                            className={`flex gap-3 ${isAssistant ? 'justify-start' : 'justify-end'}`}
+                            className={`flex gap-2.5 ${isAssistant ? 'justify-start' : 'justify-end'}`}
                         >
                             {isAssistant && (
-                                <div className="w-8 h-8 rounded-lg bg-forest-green/10 border border-forest-green/20 text-forest-green flex items-center justify-center shrink-0 mt-1">
-                                    <Bot size={18} />
+                                <div className="w-7 h-7 rounded-lg bg-blue-600/10 border border-blue-600/20 text-blue-700 flex items-center justify-center shrink-0 mt-1 shadow-xs">
+                                    <Bot size={15} />
                                 </div>
                             )}
 
                             <div
-                                className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
+                                className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-xs text-sm ${
                                     isAssistant
                                         ? msg.isError
-                                            ? 'bg-red-50 text-red-800 border border-red-200'
-                                            : 'bg-white text-gray-800 border border-gray-100'
-                                        : 'bg-forest-green text-white rounded-br-none'
+                                            ? 'bg-rose-50 text-rose-900 border border-rose-200 rounded-tl-none'
+                                            : 'bg-white text-slate-800 border border-slate-200/80 rounded-tl-none'
+                                        : 'bg-blue-600 text-white rounded-tr-none'
                                 }`}
                             >
-                                <div className="text-xs font-semibold mb-1 flex items-center justify-between gap-3 opacity-75">
+                                <div className="text-[11px] font-semibold mb-1 flex items-center justify-between gap-3 opacity-75">
                                     <span>{isAssistant ? 'Arvion AI' : 'You'}</span>
                                     <span>{msg.timestamp}</span>
                                 </div>
-                                <div className="text-sm leading-relaxed whitespace-pre-wrap font-sans">
+
+                                <div className="leading-relaxed whitespace-pre-wrap font-sans text-xs sm:text-sm">
                                     {msg.content}
                                 </div>
-                                {isAssistant && msg.provider && (
-                                    <div className="mt-2 pt-2 border-t border-gray-100/70 flex items-center justify-between text-[10px] text-gray-400">
-                                        <span className="flex items-center gap-1">
-                                            {msg.mode === 'live' ? <CheckCircle2 size={11} className="text-emerald-500" /> : <Activity size={11} className="text-amber-500" />}
-                                            {msg.provider === 'gemini-3.8-flash' ? 'Google Gemini 3.8 Flash' : 'Kenyan Dairy Expert Engine'}
+
+                                {isAssistant && (
+                                    <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                                        <span className="flex items-center gap-1 text-[10px]">
+                                            <CheckCircle2 size={11} className="text-blue-500" />
+                                            Grounding: Kenyan Dairy Standards
                                         </span>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopy(msg.content, idx)}
+                                                className="p-1 hover:text-slate-700 rounded transition"
+                                                title="Copy to clipboard"
+                                            >
+                                                {copiedIndex === idx ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleFeedback(idx, 'UP')}
+                                                className={`p-1 hover:text-slate-700 rounded transition ${feedbackState[idx] === 'UP' ? 'text-blue-600 font-bold' : ''}`}
+                                                title="Helpful"
+                                            >
+                                                <ThumbsUp size={12} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleFeedback(idx, 'DOWN')}
+                                                className={`p-1 hover:text-slate-700 rounded transition ${feedbackState[idx] === 'DOWN' ? 'text-rose-600 font-bold' : ''}`}
+                                                title="Not helpful"
+                                            >
+                                                <ThumbsDown size={12} />
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
                             {!isAssistant && (
-                                <div className="w-8 h-8 rounded-lg bg-forest-green text-white flex items-center justify-center shrink-0 mt-1 shadow-sm">
-                                    <User size={18} />
+                                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 mt-1 shadow-xs">
+                                    <User size={15} />
                                 </div>
                             )}
                         </div>
@@ -224,28 +320,29 @@ export const AIAssistantWidget = ({ initialContext }) => {
                 })}
 
                 {chatMutation.isPending && (
-                    <div className="flex gap-3 justify-start items-center text-gray-500 text-sm">
-                        <div className="w-8 h-8 rounded-lg bg-forest-green/10 border border-forest-green/20 text-forest-green flex items-center justify-center shrink-0">
-                            <Bot size={18} />
+                    <div className="flex gap-2.5 justify-start items-center text-slate-500 text-xs">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600/10 border border-blue-600/20 text-blue-700 flex items-center justify-center shrink-0">
+                            <Bot size={15} />
                         </div>
-                        <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
-                            <Sparkles size={16} className="text-forest-green animate-spin" />
-                            <span>Arvion AI is analyzing your herd data and generating guidance...</span>
+                        <div className="bg-white border border-slate-200/80 rounded-2xl px-3.5 py-2.5 shadow-xs flex items-center gap-2">
+                            <Sparkles size={14} className="text-blue-600 animate-spin" />
+                            <span>Arvion AI is formulating recommendations...</span>
                         </div>
                     </div>
                 )}
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick Prompts Bar */}
-            <div className="px-4 py-2 bg-white border-t border-gray-100 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">Suggestions:</span>
-                {QUICK_PROMPTS.map((p, i) => (
+            {/* Role Quick Prompts Bar */}
+            <div className="px-3 py-2 bg-white border-t border-slate-200/80 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Prompts:</span>
+                {suggestions.map((p, i) => (
                     <button
                         key={i}
+                        type="button"
                         onClick={() => handleSend(p.query)}
                         disabled={chatMutation.isPending}
-                        className="text-xs whitespace-nowrap px-3 py-1.5 rounded-full bg-gray-100 hover:bg-forest-green/10 hover:text-forest-green border border-gray-200/60 text-gray-700 transition-colors shrink-0 disabled:opacity-50"
+                        className="text-[11px] whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 text-slate-700 transition-colors shrink-0 disabled:opacity-50 touch-target font-medium"
                     >
                         {p.label}
                     </button>
@@ -258,26 +355,26 @@ export const AIAssistantWidget = ({ initialContext }) => {
                     e.preventDefault();
                     handleSend();
                 }}
-                className="p-3 md:p-4 bg-white border-t border-gray-100 flex items-center gap-2"
+                className="p-3 bg-white border-t border-slate-200/80 flex items-center gap-2 shrink-0"
             >
                 <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask about feed rations, mastitis, breeding cycles, milk buyers..."
-                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-forest-green focus:border-transparent transition-all"
+                    placeholder={`Ask Arvion AI as a ${role.replace('_', ' ')}...`}
+                    className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     disabled={chatMutation.isPending}
                 />
                 <Button
                     type="submit"
                     disabled={!input.trim() || chatMutation.isPending}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-forest-green text-white hover:bg-forest-green/90 shadow-sm shrink-0"
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-xs shrink-0 text-xs sm:text-sm font-bold touch-target"
                 >
-                    <Send size={16} />
-                    <span className="hidden sm:inline">Ask AI</span>
+                    <Send size={15} />
+                    <span className="hidden sm:inline">Send</span>
                 </Button>
             </form>
-        </div>
+        </aside>
     );
 };
 

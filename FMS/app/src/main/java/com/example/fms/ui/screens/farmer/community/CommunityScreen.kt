@@ -22,8 +22,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.example.fms.ui.components.common.PillBadge
+import com.example.fms.ui.components.modals.IslandModal
 import com.example.fms.ui.theme.*
+import com.example.fms.util.ShareUtils
 
 data class CommentItem(
     val id: String,
@@ -38,6 +41,8 @@ data class TweetPost(
     val name: String,
     val handle: String,
     val isVerified: Boolean = false,
+    val isVetVerified: Boolean = false,
+    val kvbNumber: String? = null,
     val locationTag: String,
     val communityTag: String = "General Dairy",
     val content: String,
@@ -55,7 +60,8 @@ data class TweetPost(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityScreen(
-    onOpenDirectMessage: (recipientName: String) -> Unit = {}
+    onOpenDirectMessage: (recipientName: String) -> Unit = {},
+    onNavigateToAIOverview: () -> Unit = {}
 ) {
     // Community circles available in the cooperative
     var communities by remember {
@@ -71,6 +77,7 @@ fun CommunityScreen(
     }
     var selectedCommunity by remember { mutableStateOf("All Posts") }
     var showCreateCommunityDialog by remember { mutableStateOf(false) }
+    var showCommunityDrawer by remember { mutableStateOf(false) }
 
     // Bottom sheet state for Compose Post Drawer
     var showPostDrawer by remember { mutableStateOf(false) }
@@ -88,6 +95,8 @@ fun CommunityScreen(
                     name = "Dr. Emmanuel Kiprono",
                     handle = "@kiprono_dvm",
                     isVerified = true,
+                    isVetVerified = true,
+                    kvbNumber = "KVB #4102",
                     locationTag = "Eldoret, Uasin Gishu",
                     communityTag = "Disease & Vet Alerts",
                     content = "🚨 URGENT BIOSECURITY NOTICE: Foot & Mouth Disease (FMD) signs identified in southern pasturing corridors. Farmers: please pause inter-farm livestock trading, implement foot baths, and isolate any salivating cattle immediately.",
@@ -155,6 +164,8 @@ fun CommunityScreen(
         else posts.filter { it.communityTag == selectedCommunity }
     }
 
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
             Column(
@@ -163,7 +174,7 @@ fun CommunityScreen(
                     .background(MaterialTheme.colorScheme.background)
                     .statusBarsPadding()
             ) {
-                // Twitter / X Style Clean Header
+                // Twitter / X Style Clean Header with Sidebar Switcher & AI Overview
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -171,34 +182,68 @@ fun CommunityScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = ForestGreen,
-                        modifier = Modifier.size(34.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.clickable { showCommunityDrawer = true }
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("BM", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = EmeraldLight)
+                        Surface(
+                            shape = CircleShape,
+                            color = ForestGreen,
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("BM", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = EmeraldLight)
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = selectedCommunity,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = "Switch", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
-                    // Feed Title
-                    Text(
-                        text = "Dairy Community",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    IconButton(
-                        onClick = { showPostDrawer = true },
-                        modifier = Modifier.size(34.dp)
+                    // Action Icons: AI Overview Button (replaces pen icon) + Compose Post
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Edit,
-                            contentDescription = "New Post",
-                            tint = EmeraldPrimary,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        IconButton(
+                            onClick = onNavigateToAIOverview,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = EmeraldPrimary.copy(alpha = 0.15f),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.AutoAwesome,
+                                        contentDescription = "AI Overview & Reports",
+                                        tint = EmeraldPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { showPostDrawer = true },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.EditNote,
+                                contentDescription = "New Post",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
 
@@ -254,6 +299,7 @@ fun CommunityScreen(
         }
     ) { innerPadding ->
         LazyColumn(
+            contentPadding = PaddingValues(bottom = 110.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -294,6 +340,23 @@ fun CommunityScreen(
                     },
                     onDirectMessage = {
                         onOpenDirectMessage(post.name)
+                    },
+                    onSharePost = {
+                        ShareUtils.sharePost(
+                            context = context,
+                            postId = post.id,
+                            authorName = post.name,
+                            contentSnippet = post.content.take(80)
+                        )
+                    },
+                    onWhatsAppShare = {
+                        ShareUtils.sharePost(
+                            context = context,
+                            postId = post.id,
+                            authorName = post.name,
+                            contentSnippet = post.content.take(80),
+                            targetWhatsApp = true
+                        )
                     }
                 )
                 HorizontalDivider(
@@ -326,8 +389,9 @@ fun CommunityScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight(0.88f)
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 24.dp),
+                    .padding(bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Drawer Header
@@ -360,7 +424,7 @@ fun CommunityScreen(
                     value = composerText,
                     onValueChange = { composerText = it },
                     placeholder = { Text("Share milk yields, questions, price updates, or farm tips...") },
-                    minLines = 4,
+                    minLines = 6,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 )
@@ -417,6 +481,7 @@ fun CommunityScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight(0.9f)
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -459,12 +524,13 @@ fun CommunityScreen(
                     }
                 }
 
-                // Existing Comments List
+                // Existing Threaded Comments List
                 if (currentPost.comments.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 18.dp),
+                            .weight(1f)
+                            .padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("No replies yet. Be the first to reply!", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -473,29 +539,52 @@ fun CommunityScreen(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 240.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(currentPost.comments, key = { it.id }) { c ->
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = EmeraldPrimary.copy(alpha = 0.15f),
-                                    modifier = Modifier.size(30.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(c.authorName.take(1), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EmeraldPrimary)
+                                // Left Thread vertical connection bar & Avatar
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = EmeraldPrimary.copy(alpha = 0.15f),
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(c.authorName.take(1), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = EmeraldPrimary)
+                                        }
                                     }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .width(2.dp)
+                                            .height(28.dp)
+                                            .background(EmeraldPrimary.copy(alpha = 0.25f))
+                                    )
                                 }
+
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(c.authorName, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                                        Text(c.timeAgo, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(c.authorName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        Text(c.handle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("· ${c.timeAgo}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    Text(c.text, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = c.text,
+                                        fontSize = 13.sp,
+                                        lineHeight = 18.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
                         }
@@ -554,25 +643,16 @@ fun CommunityScreen(
         }
     }
 
-    // --- CREATE NEW COMMUNITY DIALOG ---
+    // --- CREATE NEW COMMUNITY MODAL ---
     if (showCreateCommunityDialog) {
         var newCommName by remember { mutableStateOf("") }
-        AlertDialog(
+        var inviteContacts by remember { mutableStateOf("") }
+        IslandModal(
+            isOpen = showCreateCommunityDialog,
             onDismissRequest = { showCreateCommunityDialog = false },
-            title = { Text("Create Community", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Create a new topical space for local farmers, aggregators, or breeders:", fontSize = 13.sp)
-                    OutlinedTextField(
-                        value = newCommName,
-                        onValueChange = { newCommName = it },
-                        placeholder = { Text("e.g. Nandi Silage Group") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-            },
+            title = "Create Community",
+            icon = Icons.Rounded.Groups,
+            badgeText = "New Topical Group",
             confirmButton = {
                 Button(
                     onClick = {
@@ -583,18 +663,167 @@ fun CommunityScreen(
                         }
                         showCreateCommunityDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Create")
+                    Text("Create Space", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateCommunityDialog = false }) {
+                OutlinedButton(
+                    onClick = { showCreateCommunityDialog = false },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Text("Cancel")
                 }
-            },
-            shape = RoundedCornerShape(20.dp)
+            }
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Create a new topical space for local farmers, aggregators, or breeders:",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = newCommName,
+                    onValueChange = { newCommName = it },
+                    label = { Text("Community Name") },
+                    placeholder = { Text("e.g. Nandi Silage Group") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldPrimary,
+                        cursorColor = EmeraldPrimary
+                    )
+                )
+
+                OutlinedTextField(
+                    value = inviteContacts,
+                    onValueChange = { inviteContacts = it },
+                    label = { Text("Invite Members (Optional)") },
+                    placeholder = { Text("Phone numbers or usernames, comma separated") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldPrimary,
+                        cursorColor = EmeraldPrimary
+                    )
+                )
+                Text(
+                    text = "💡 Invitees will receive an SMS / in-app link to join this discussion space.",
+                    fontSize = 11.sp,
+                    color = EmeraldPrimary
+                )
+            }
+        }
+    }
+
+    // --- COMMUNITY SWITCHER DRAWER (Modal Bottom Sheet) ---
+    if (showCommunityDrawer) {
+        val communityMetadata = listOf(
+            Pair("All Posts", "Combined feed across all dairy circles and market updates"),
+            Pair("General Dairy", "Farm operations, stall management & cow routines"),
+            Pair("Milk Prices & Aggregators", "Offtake prices, chilling hub notices & collection"),
+            Pair("Disease & Vet Alerts", "FMD, ECF, biosecurity & official KVB updates"),
+            Pair("Breeding & Feeds", "Silage, fodder crops, AI genetics & heat detection")
         )
+
+        ModalBottomSheet(
+            onDismissRequest = { showCommunityDrawer = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Switch Dairy Space",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Select a community space to filter your discussions",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    TextButton(onClick = {
+                        showCommunityDrawer = false
+                        showCreateCommunityDialog = true
+                    }) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = ForestGreen)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Create", color = ForestGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                communityMetadata.forEach { (commTitle, commDesc) ->
+                    val isSelected = selectedCommunity == commTitle
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isSelected) EmeraldPrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isSelected) 1.5.dp else 0.5.dp,
+                            color = if (isSelected) EmeraldPrimary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedCommunity = commTitle
+                                showCommunityDrawer = false
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = commTitle,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) EmeraldPrimary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = commDesc,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (isSelected) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Rounded.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = EmeraldPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -605,7 +834,9 @@ fun TweetItem(
     onLikeToggle: () -> Unit,
     onRepostToggle: () -> Unit,
     onBookmarkToggle: () -> Unit,
-    onDirectMessage: () -> Unit
+    onDirectMessage: () -> Unit,
+    onSharePost: () -> Unit = {},
+    onWhatsAppShare: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -644,7 +875,33 @@ fun TweetItem(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1
                 )
-                if (post.isVerified) {
+                if (post.isVetVerified) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = EmeraldPrimary.copy(alpha = 0.15f),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, EmeraldPrimary)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.VerifiedUser,
+                                contentDescription = "KVB Verified Vet",
+                                tint = EmeraldPrimary,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "Certified Vet",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = EmeraldPrimary
+                            )
+                        }
+                    }
+                } else if (post.isVerified) {
                     Spacer(modifier = Modifier.width(3.dp))
                     Icon(
                         imageVector = Icons.Rounded.CheckCircle,
@@ -703,7 +960,7 @@ fun TweetItem(
                 }
             }
 
-            // Bottom Interaction Bar (Replies, Reposts, Likes, Bookmark, DM)
+            // Bottom Interaction Bar (Replies, Reposts, Likes, Bookmark, DM, Share)
             Spacer(modifier = Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -780,7 +1037,7 @@ fun TweetItem(
                     )
                 }
 
-                // Direct Message / Send
+                // Direct Message / Chat
                 IconButton(
                     onClick = onDirectMessage,
                     modifier = Modifier.size(28.dp)
@@ -789,6 +1046,19 @@ fun TweetItem(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
                         contentDescription = "Direct Message",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                // Share Link (WhatsApp & General)
+                IconButton(
+                    onClick = onSharePost,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Share,
+                        contentDescription = "Share Post Link",
+                        tint = EmeraldPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
