@@ -225,3 +225,32 @@ class TestAuth:
         assert res_ok.status_code == status.HTTP_201_CREATED
         assert res_ok.data.get('temporary_password') is None
 
+    def test_user_handle_auto_generation_and_uniqueness(self):
+        u1 = User.objects.create_user(phone_number='+254711000111', full_name='Baraka Mark', password='password123')
+        assert u1.handle == 'baraka_mark'
+
+        # Second user with same name gets incremented handle suffix
+        u2 = User.objects.create_user(phone_number='+254711000222', full_name='Baraka Mark', password='password123')
+        assert u2.handle == 'baraka_mark_1'
+
+        # Registration with custom handle
+        res = self.client.post(self.register_url, {
+            'phone_number': '+254711000333',
+            'full_name': 'Custom Handle Farmer',
+            'handle': '@custom_dairy',
+            'password': 'password123'
+        })
+        assert res.status_code == status.HTTP_201_CREATED
+        u3 = User.objects.get(phone_number='+254711000333')
+        assert u3.handle == 'custom_dairy'
+
+        # Duplicate custom handle gets rejected with 400
+        res_dup = self.client.post(self.register_url, {
+            'phone_number': '+254711000444',
+            'full_name': 'Another Farmer',
+            'handle': 'custom_dairy',
+            'password': 'password123'
+        })
+        assert res_dup.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'handle' in res_dup.data
+

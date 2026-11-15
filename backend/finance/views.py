@@ -136,6 +136,8 @@ class SubscriptionViewSet(viewsets.ViewSet):
         return Response({
             'current': SubscriptionSerializer(subscription).data,
             'plans': filtered_catalog,
+            'paybill_number': getattr(settings, 'MPESA_PAYBILL_NUMBER', '522533'),
+            'paybill_account': getattr(settings, 'MPESA_PAYBILL_ACCOUNT', '1349921815'),
             'test_mode': not all([
                 getattr(settings, 'MPESA_CONSUMER_KEY', ''),
                 getattr(settings, 'MPESA_CONSUMER_SECRET', ''),

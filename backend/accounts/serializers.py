@@ -38,14 +38,25 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     kra_pin = serializers.CharField(required=False, allow_blank=True, max_length=30)
     payment_terms = serializers.CharField(required=False, allow_blank=True, max_length=50, default='Weekly')
     vehicle_capacity_litres = serializers.IntegerField(required=False, min_value=0, default=0)
+    handle = serializers.CharField(required=False, allow_blank=True, max_length=50)
 
     class Meta:
         model = User
         fields = (
-            'phone_number', 'full_name', 'password', 'role',
+            'phone_number', 'full_name', 'handle', 'password', 'role',
             'license_number', 'specialization', 'years_experience', 'county', 'clinic_name', 'kvb_reg_no',
             'organization_name', 'operating_counties', 'operating_county', 'business_reg_no', 'kra_pin', 'payment_terms', 'vehicle_capacity_litres'
         )
+
+    def validate_handle(self, value):
+        if value:
+            norm = User.normalize_handle(value)
+            if not norm:
+                raise serializers.ValidationError('Handle must contain alphanumeric characters or underscores.')
+            if User.objects.filter(handle=norm).exists():
+                raise serializers.ValidationError(f"Handle '@{norm}' is already taken.")
+            return norm
+        return value
 
     def validate(self, attrs):
         role = attrs.get('role', User.Role.FARMER)
@@ -132,12 +143,26 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'phone_number', 'full_name', 'email', 'role', 'is_active', 'created_at',
+            'id', 'phone_number', 'handle', 'full_name', 'email', 'role', 'is_active', 'created_at',
             'farm', 'accessible_modules', 'national_id', 'alt_phone', 'emergency_contact_name',
             'emergency_contact_phone', 'worker_specialty', 'indemnity_agreed', 'indemnity_agreed_at',
             'is_verified', 'vet_profile', 'aggregator_profile'
         )
         read_only_fields = ('id', 'role', 'created_at', 'phone_number', 'is_active', 'accessible_modules', 'indemnity_agreed', 'indemnity_agreed_at')
+
+    def validate_handle(self, value):
+        if value:
+            norm = User.normalize_handle(value)
+            if not norm:
+                raise serializers.ValidationError('Handle must contain alphanumeric characters or underscores.')
+            user = self.instance
+            qs = User.objects.filter(handle=norm)
+            if user:
+                qs = qs.exclude(pk=user.pk)
+            if qs.exists():
+                raise serializers.ValidationError(f"Handle '@{norm}' is already taken.")
+            return norm
+        return value
 
     def get_is_verified(self, obj):
         if obj.role == User.Role.VETERINARIAN and hasattr(obj, 'vet_profile') and obj.vet_profile:

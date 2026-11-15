@@ -209,6 +209,8 @@ MPESA_SHORTCODE = config('MPESA_SHORTCODE', default='')
 MPESA_PASSKEY = config('MPESA_PASSKEY', default='')
 MPESA_CALLBACK_URL = config('MPESA_CALLBACK_URL', default='')
 MPESA_ENV = config('MPESA_ENV', default='sandbox')
+MPESA_PAYBILL_NUMBER = config('MPESA_PAYBILL_NUMBER', default='522533')
+MPESA_PAYBILL_ACCOUNT = config('MPESA_PAYBILL_ACCOUNT', default='1349921815')
 
 # Celery Configuration
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')

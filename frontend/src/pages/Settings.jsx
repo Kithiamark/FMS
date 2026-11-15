@@ -66,6 +66,7 @@ const Settings = () => {
   };
 
   const [activeModal, setActiveModal] = useState(null);
+  const [workerToDelete, setWorkerToDelete] = useState(null);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
   const [mpesaReceiptCode, setMpesaReceiptCode] = useState('');
   const [isSubmittingMpesa, setIsSubmittingMpesa] = useState(false);
@@ -258,12 +259,8 @@ const Settings = () => {
   };
 
   const handleDeleteWorker = (id) => {
-    if(window.confirm('Are you sure you want to delete this worker account?')) {
-      deleteWorker.mutate(id, {
-        onSuccess: () => addToast('Worker account deleted.', 'success'),
-        onError: () => addToast('Could not delete worker.', 'error'),
-      });
-    }
+    setWorkerToDelete(id);
+    setActiveModal('delete_worker');
   };
 
 
@@ -475,6 +472,10 @@ const Settings = () => {
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-500">Full Name</span>
                 <span className="font-bold text-slate-900 dark:text-slate-100">{profile.full_name || '—'}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Community Handle</span>
+                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">@{user?.handle || 'farmer'}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-500">Phone Number</span>
@@ -720,6 +721,44 @@ const Settings = () => {
         </form>
       </Modal>
 
+      {/* DELETE WORKER CONFIRMATION MODAL */}
+      <Modal
+        isOpen={activeModal === 'delete_worker'}
+        onClose={() => { setActiveModal(null); setWorkerToDelete(null); }}
+        title="Delete Worker Account"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Are you sure you want to delete this worker account? They will lose immediate access to the farm mobile app and logging interfaces.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setActiveModal(null); setWorkerToDelete(null); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteWorker.isPending}
+              onClick={() => {
+                if (workerToDelete) {
+                  deleteWorker.mutate(workerToDelete, {
+                    onSuccess: () => {
+                      addToast('Worker account deleted.', 'success');
+                      setActiveModal(null);
+                      setWorkerToDelete(null);
+                    },
+                    onError: () => addToast('Could not delete worker.', 'error'),
+                  });
+                }
+              }}
+            >
+              Delete Account
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* M-PESA PAYMENT MODAL */}
       <Modal isOpen={activeModal === 'mpesa_payment'} onClose={() => setActiveModal(null)} title="M-Pesa Subscription Payment">
         <form onSubmit={submitMpesaPayment} className="space-y-4 text-xs">
@@ -748,16 +787,16 @@ const Settings = () => {
               <div className="flex items-start gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-bold text-white">1</span>
                 <div>
-                  Open <strong>M-Pesa</strong> &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Buy Goods and Services</strong>.
+                  Open <strong>M-Pesa</strong> &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Paybill</strong>.
                   <div className="mt-1 font-mono font-bold text-emerald-800 dark:text-emerald-300 text-xs">
-                    Till Number: 882190 (FMS Dairy)
+                    Business / Paybill: {subscriptionData?.paybill_number || '522533'}
                   </div>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-bold text-white">2</span>
                 <div>
-                  Or choose <strong>Paybill: 247247</strong>, Account: <strong className="font-mono">{user?.phone_number || 'FARM-01'}</strong>.
+                  Account Number: <strong className="font-mono text-emerald-800 dark:text-emerald-300">{subscriptionData?.paybill_account || '1349921815'}</strong>
                 </div>
               </div>
               <div className="flex items-start gap-2">
