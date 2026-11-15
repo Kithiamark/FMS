@@ -1,0 +1,15 @@
+meta {
+  name: "Personalized Recommendations"
+  type: "http"
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/ai/recommendations/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

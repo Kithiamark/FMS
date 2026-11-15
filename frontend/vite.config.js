@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: process.env.VITE_CDN_URL || '/',
   envPrefix: ['VITE_', 'API_'],
   plugins: [
     react(),
@@ -31,8 +32,25 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
+          {
+            // Edge CDN and immutable static assets cache
+            urlPattern: ({ url }) => 
+              url.pathname.match(/\.(?:js|css|woff2?|png|svg|ico|jpg|webp)$/) ||
+              Boolean(process.env.VITE_CDN_URL && url.href.startsWith(process.env.VITE_CDN_URL)),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cdn-static-assets',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api'),
             handler: 'NetworkFirst',
@@ -51,6 +69,21 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    assetsInlineLimit: 4096,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-query': ['@tanstack/react-query', 'axios'],
+          'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge'],
+          'vendor-i18n': ['i18next', 'react-i18next'],
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     proxy: {

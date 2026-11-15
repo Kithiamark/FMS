@@ -70,7 +70,7 @@ fun AggregatorConnectionsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 110.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -127,5 +127,21 @@ fun AggregatorConnectionsScreen(
                 Spacer(modifier = Modifier.height(70.dp))
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Aggregator Connections Light")
+@Composable
+fun AggregatorConnectionsScreenPreview() {
+    FMSTheme(darkTheme = false) {
+        AggregatorConnectionsScreen()
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Aggregator Connections Dark")
+@Composable
+fun AggregatorConnectionsScreenDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        AggregatorConnectionsScreen()
     }
 }

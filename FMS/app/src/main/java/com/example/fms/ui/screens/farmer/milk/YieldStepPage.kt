@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.example.fms.ui.components.cards.IslandCard
 import com.example.fms.ui.components.common.PillBadge
 import com.example.fms.ui.theme.EmeraldPrimary
+import com.example.fms.ui.theme.FMSTheme
 
 data class CowMilkEntry(
     val animalId: String,
@@ -59,7 +60,7 @@ fun YieldStepPage(
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Rounded.Pets, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(18.dp))
+                                    Icon(com.example.fms.ui.theme.CowIcon, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(18.dp))
                                 }
                             }
                             Column {
@@ -106,5 +107,57 @@ fun YieldStepPage(
                 }
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Yield Step Light")
+@Composable
+fun YieldStepPagePreview() {
+    FMSTheme(darkTheme = false) {
+        YieldStepPage(
+            cows = listOf(
+                CowMilkEntry(
+                    animalId = "1",
+                    tagNumber = "#101",
+                    name = "Amani",
+                    morningYield = "7.5",
+                    eveningYield = "6.0"
+                ),
+                CowMilkEntry(
+                    animalId = "2",
+                    tagNumber = "#102",
+                    name = "Zawadi",
+                    morningYield = "8.0",
+                    eveningYield = "7.0"
+                )
+            ),
+            onCowYieldChange = { _, _, _ -> }
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Yield Step Dark")
+@Composable
+fun YieldStepPageDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        YieldStepPage(
+            cows = listOf(
+                CowMilkEntry(
+                    animalId = "1",
+                    tagNumber = "#101",
+                    name = "Amani",
+                    morningYield = "7.5",
+                    eveningYield = "6.0"
+                ),
+                CowMilkEntry(
+                    animalId = "2",
+                    tagNumber = "#102",
+                    name = "Zawadi",
+                    morningYield = "8.0",
+                    eveningYield = "7.0"
+                )
+            ),
+            onCowYieldChange = { _, _, _ -> }
+        )
     }
 }

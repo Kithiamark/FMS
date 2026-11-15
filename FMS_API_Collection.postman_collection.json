@@ -1,0 +1,739 @@
+{
+  "info": {
+    "name": "FMS API Collection (Postman & Bruno Compatible)",
+    "_postman_id": "fms-dairy-api-v1",
+    "description": "Comprehensive API collection for testing Kenya Dairy Farm Management Platform across all roles: Farmer, Worker, Vet, Aggregator, Admin, and AI services.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"+254712345678\",\n  \"password\": \"Password123!\",\n  \"full_name\": \"John Kamau\",\n  \"role\": \"FARMER\",\n  \"farm_name\": \"Green Valley Dairy\",\n  \"county\": \"Kiambu\",\n  \"sub_county\": \"Limuru\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register", ""]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access) {",
+                  "    pm.collectionVariables.set('token', jsonData.access);",
+                  "    pm.collectionVariables.set('refreshToken', jsonData.refresh);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"+254712345678\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Profile (Me)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me", ""]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access) {",
+                  "    pm.collectionVariables.set('token', jsonData.access);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/token/refresh/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "token", "refresh", ""]
+            }
+          }
+        },
+        {
+          "name": "Request OTP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"UPDATE_PROFILE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/request-otp/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "request-otp", ""]
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"123456\",\n  \"action\": \"UPDATE_PROFILE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/verify-otp/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "verify-otp", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Farms & Tasks",
+      "item": [
+        {
+          "name": "List Farms",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/farms/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "farms", ""]
+            }
+          }
+        },
+        {
+          "name": "List Worker Tasks",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "tasks", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Animals",
+      "item": [
+        {
+          "name": "List Animals",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/animals/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "animals", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Animal",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bessie\",\n  \"ear_tag\": \"KE-KBU-042\",\n  \"breed\": \"Friesian\",\n  \"sex\": \"Cow\",\n  \"stage\": \"Lactating\",\n  \"health_status\": \"Healthy\",\n  \"date_of_birth\": \"2022-03-15\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/animals/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "animals", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Dairy Records",
+      "item": [
+        {
+          "name": "Daily Milk Summary",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/milk/summary/daily/?date=2026-10-30",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "milk", "summary", "daily", ""],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-10-30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk Log Milk Records",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-10-30\",\n  \"records\": [\n    {\n      \"animal_id\": 1,\n      \"morning_yield\": 12.5,\n      \"evening_yield\": 9.5\n    }\n  ],\n  \"allocation\": {\n    \"sold_litres\": 18.0,\n    \"home_use_litres\": 2.0,\n    \"calf_litres\": 2.0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/milk/bulk/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "milk", "bulk", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Finance & Subscriptions",
+      "item": [
+        {
+          "name": "List Expenses",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "expenses", ""]
+            }
+          }
+        },
+        {
+          "name": "Income Summary",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/income/summary/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "income", "summary", ""]
+            }
+          }
+        },
+        {
+          "name": "Subscription Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/subscription/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "subscription", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Alerts",
+      "item": [
+        {
+          "name": "List Alerts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alerts/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alerts", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Veterinarian Services",
+      "item": [
+        {
+          "name": "Vet Dashboard",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/vet/data/dashboard/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "vet", "data", "dashboard", ""]
+            }
+          }
+        },
+        {
+          "name": "Vet Visits",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/vet/data/visits/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "vet", "data", "visits", ""]
+            }
+          }
+        },
+        {
+          "name": "Vet Farms",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/vet/data/farms/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "vet", "data", "farms", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Aggregators & Off-Takers",
+      "item": [
+        {
+          "name": "My Aggregator Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aggregators/profiles/my-profile/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "aggregators", "profiles", "my-profile", ""]
+            }
+          }
+        },
+        {
+          "name": "Connected Farms",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aggregators/connections/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "aggregators", "connections", ""]
+            }
+          }
+        },
+        {
+          "name": "Log Milk Collection",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connection\": 1,\n  \"date\": \"2026-10-30\",\n  \"litres_collected\": 150.0,\n  \"price_per_litre\": 45.0,\n  \"payment_status\": \"PAID\",\n  \"lactometer_reading\": 1.029,\n  \"temperature_celsius\": 4.5,\n  \"alcohol_test_passed\": true,\n  \"quality_grade\": \"GRADE_A\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/aggregators/collections/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "aggregators", "collections", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Admin Operations",
+      "item": [
+        {
+          "name": "Platform Overview Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/stats/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "stats", ""]
+            }
+          }
+        },
+        {
+          "name": "Recent OTPs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/recent-otps/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "recent-otps", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Arvion AI Services",
+      "item": [
+        {
+          "name": "AI Assistant Chat",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What is the recommended concentrate ration for a 20L lactating Friesian cow?\",\n  \"history\": [],\n  \"roleContext\": {\n    \"role\": \"FARMER\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/chat/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ai", "chat", ""]
+            }
+          }
+        },
+        {
+          "name": "Farm Health Telemetry",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/farm-health/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ai", "farm-health", ""]
+            }
+          }
+        },
+        {
+          "name": "Personalized Recommendations",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/recommendations/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ai", "recommendations", ""]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

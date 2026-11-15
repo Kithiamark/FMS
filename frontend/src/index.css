@@ -2,6 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --radius-card: 1rem;
+  --radius-btn: 0.75rem;
+  --radius-input: 0.75rem;
+
+  /* Default / FARMER / FARM_WORKER */
+  --role-accent: #1a3a1f;
+  --role-accent-hover: #2e6b39;
+  --role-accent-subtle: #ecfdf5;
+  --role-accent-text: #065f46;
+  --role-accent-border: #a7f3d0;
+}
+
+[data-role="VETERINARIAN"],
+[data-role="vet"] {
+  --role-accent: #0d9488;
+  --role-accent-hover: #0f766e;
+  --role-accent-subtle: #f0fdfa;
+  --role-accent-text: #115e59;
+  --role-accent-border: #99f6e4;
+}
+
+[data-role="AGGREGATOR"],
+[data-role="aggregator"] {
+  --role-accent: #2563eb;
+  --role-accent-hover: #1d4ed8;
+  --role-accent-subtle: #eff6ff;
+  --role-accent-text: #1e40af;
+  --role-accent-border: #bfdbfe;
+}
+
+[data-role="ADMIN"],
+[data-role="admin"] {
+  --role-accent: #2563eb;
+  --role-accent-hover: #1d4ed8;
+  --role-accent-subtle: #f1f5f9;
+  --role-accent-text: #0f172a;
+  --role-accent-border: #cbd5e1;
+}
+
+/* Minimum 44px touch targets for mobile accessibility */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0);
@@ -10,3 +56,47 @@
     transform: translateX(-50%);
   }
 }
+
+@layer utilities {
+  /* Modern Glassmorphic / Glossy Design Utilities */
+  .glossy {
+    background-color: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  }
+
+  .glossy-dark {
+    background-color: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  .glossy-card {
+    background-color: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  }
+
+  .glossy-nav {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(226, 232, 240, 0.85);
+    box-shadow: 0 -4px 20px -2px rgba(15, 23, 42, 0.05);
+  }
+
+  .glossy-accent {
+    background-color: var(--role-accent-subtle, #ecfdf5);
+    opacity: 0.92;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--role-accent-border, #a7f3d0);
+  }
+}
+

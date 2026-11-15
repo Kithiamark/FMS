@@ -1,0 +1,29 @@
+meta {
+  name: "Log Milk Collection"
+  type: "http"
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/aggregators/collections/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "connection": 1,
+    "date": "2026-10-30",
+    "litres_collected": 150.0,
+    "price_per_litre": 45.0,
+    "payment_status": "PAID",
+    "lactometer_reading": 1.029,
+    "temperature_celsius": 4.5,
+    "alcohol_test_passed": true,
+    "quality_grade": "GRADE_A"
+  }
+}

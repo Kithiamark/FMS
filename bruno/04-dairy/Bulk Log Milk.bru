@@ -1,0 +1,33 @@
+meta {
+  name: "Bulk Log Milk Records"
+  type: "http"
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/milk/bulk/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "date": "2026-10-30",
+    "records": [
+      {
+        "animal_id": 1,
+        "morning_yield": 12.5,
+        "evening_yield": 9.5
+      }
+    ],
+    "allocation": {
+      "sold_litres": 18.0,
+      "home_use_litres": 2.0,
+      "calf_litres": 2.0
+    }
+  }
+}

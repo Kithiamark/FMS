@@ -1,0 +1,15 @@
+meta {
+  name: "Vet Connected Farms"
+  type: "http"
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/vet/data/farms/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

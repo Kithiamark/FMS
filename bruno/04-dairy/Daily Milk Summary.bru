@@ -1,0 +1,19 @@
+meta {
+  name: "Daily Milk Summary"
+  type: "http"
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/milk/summary/daily/?date=2026-10-30
+  body: none
+  auth: bearer
+}
+
+params:query {
+  date: 2026-10-30
+}
+
+auth:bearer {
+  token: {{token}}
+}

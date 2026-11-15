@@ -1,0 +1,15 @@
+meta {
+  name: "Vet Dashboard"
+  type: "http"
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/vet/data/dashboard/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

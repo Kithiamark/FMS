@@ -280,6 +280,29 @@ class PersonalizedRecommendationsView(APIView):
             })
 
         sick_or_watch = animals.filter(health_status__in=[Animal.HealthStatus.SICK, Animal.HealthStatus.PREGNANT, Animal.HealthStatus.DRY]).count()
+        sick_only = animals.filter(health_status=Animal.HealthStatus.SICK)
+        if sick_only.exists():
+            sick_names = ", ".join(a.name for a in sick_only[:3])
+            recommendations.append({
+                "type": "vet_consultation",
+                "priority": "Urgent",
+                "title": "Consult Certified Veterinarian",
+                "message": f"Active clinical concern detected for {sick_names}. Schedule an on-farm diagnostic review or telemedicine consultation with a KVB registered vet to prevent herd infection and yield loss.",
+                "action": "Find Registered Vet",
+                "link": "/find-vet",
+                "vet_action_required": True,
+            })
+        elif declining and len(declining) >= 2:
+            recommendations.append({
+                "type": "vet_consultation",
+                "priority": "High",
+                "title": "Recommend Veterinary Diagnostic",
+                "message": "Multiple cattle are experiencing unexplained milk yield decline. A veterinary check for sub-clinical mastitis or hemoparasites is strongly advised.",
+                "action": "Connect with Vet",
+                "link": "/find-vet",
+                "vet_action_required": True,
+            })
+
         if sick_or_watch:
             recommendations.append({
                 "type": "health",

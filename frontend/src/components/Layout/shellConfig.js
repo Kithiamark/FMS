@@ -1,0 +1,152 @@
+import {
+  LayoutDashboard,
+  Milk,
+  PiggyBank,
+  Brain,
+  Bell,
+  Settings,
+  MessageCircle,
+  Stethoscope,
+  Leaf,
+  UsersRound,
+  Calendar,
+  Building2,
+  FileText,
+  UserCircle,
+  Droplets,
+  BrainCircuit,
+  MessageSquare,
+  Users,
+  CreditCard,
+  Ticket,
+  Megaphone,
+  Terminal,
+  Shield,
+} from 'lucide-react';
+import { Cow } from '../ui/CowIcon';
+
+export const ROLE_CONFIGS = {
+  FARMER: {
+    roleId: 'FARMER',
+    themeName: 'farmer',
+    portalTitle: 'Arvion',
+    portalSubtitle: 'Dairy Operations',
+    portalIcon: Leaf,
+    accentBorder: 'border-l-emerald-700',
+    accentBg: 'bg-emerald-700',
+    accentText: 'text-emerald-800',
+    accentLight: 'bg-emerald-50',
+    primaryNav: [
+      { key: 'dashboard', icon: LayoutDashboard, labelKey: 'dashboard', fallbackLabel: 'Dashboard', path: '/dashboard' },
+      { key: 'dairy', icon: Milk, labelKey: 'dairy', fallbackLabel: 'Dairy Production', path: '/dairy' },
+      { key: 'finance', icon: PiggyBank, labelKey: 'financials', fallbackLabel: 'Financials', path: '/finance' },
+      { key: 'insights', icon: Brain, labelKey: 'insights', fallbackLabel: 'AI Insights', path: '/insights' },
+    ],
+    secondaryNav: [
+      { key: 'animals', icon: Cow, labelKey: 'herd', fallbackLabel: 'Herd Overview', path: '/animals' },
+      { key: 'find-vet', icon: Stethoscope, labelKey: 'find_vet', fallbackLabel: 'Find Vet', path: '/find-vet' },
+      { key: 'find-buyer', icon: Building2, labelKey: 'find_buyers', fallbackLabel: 'Find Buyers', path: '/find-buyer' },
+      { key: 'community', icon: UsersRound, labelKey: 'community', fallbackLabel: 'Community', path: '/community' },
+      { key: 'tasks', icon: Calendar, labelKey: 'tasks', fallbackLabel: 'Tasks', path: '/tasks', badge: 'Enterprise' },
+      { key: 'messages', icon: MessageCircle, labelKey: 'messages', fallbackLabel: 'Messages', path: '/messages' },
+      { key: 'alerts', icon: Bell, labelKey: 'alerts', fallbackLabel: 'Alerts', path: '/alerts' },
+      { key: 'settings', icon: Settings, labelKey: 'settings', fallbackLabel: 'Settings', path: '/settings' },
+    ],
+  },
+
+  FARM_WORKER: {
+    roleId: 'FARM_WORKER',
+    themeName: 'farmer',
+    portalTitle: 'Arvion',
+    portalSubtitle: 'Farm Worker Portal',
+    portalIcon: Leaf,
+    accentBorder: 'border-l-emerald-700',
+    accentBg: 'bg-emerald-700',
+    accentText: 'text-emerald-800',
+    accentLight: 'bg-emerald-50',
+    primaryNav: [
+      { key: 'dashboard', icon: LayoutDashboard, labelKey: 'dashboard', fallbackLabel: 'Dashboard', path: '/dashboard' },
+      { key: 'tasks', icon: Calendar, labelKey: 'tasks', fallbackLabel: 'My Tasks', path: '/tasks' },
+      { key: 'dairy', icon: Milk, labelKey: 'dairy', fallbackLabel: 'Milk Entry', path: '/dairy' },
+      { key: 'animals', icon: Cow, labelKey: 'herd', fallbackLabel: 'Herd', path: '/animals' },
+    ],
+    secondaryNav: [
+      { key: 'alerts', icon: Bell, labelKey: 'alerts', fallbackLabel: 'Alerts', path: '/alerts' },
+      { key: 'settings', icon: Settings, labelKey: 'settings', fallbackLabel: 'Settings', path: '/settings' },
+    ],
+  },
+
+  VETERINARIAN: {
+    roleId: 'VETERINARIAN',
+    themeName: 'vet',
+    portalTitle: 'Arvion',
+    portalSubtitle: 'Veterinary Clinical Portal',
+    portalIcon: Stethoscope,
+    accentBorder: 'border-l-vet-teal',
+    accentBg: 'bg-vet-teal',
+    accentText: 'text-teal-800',
+    accentLight: 'bg-teal-50',
+    primaryNav: [
+      { key: 'dashboard', icon: LayoutDashboard, labelKey: 'dashboard', fallbackLabel: 'Clinical Overview', path: '/vet/dashboard' },
+      { key: 'farms', icon: Building2, labelKey: 'farms', fallbackLabel: 'Connected Farms', path: '/vet/farms' },
+      { key: 'records', icon: FileText, labelKey: 'records', fallbackLabel: 'Medical Records', path: '/vet/records' },
+      { key: 'visits', icon: Calendar, labelKey: 'visits', fallbackLabel: 'Clinical Visits', path: '/vet/visits' },
+    ],
+    secondaryNav: [
+      { key: 'connections', icon: Users, labelKey: 'connections', fallbackLabel: 'Connections', path: '/vet/connections' },
+      { key: 'messages', icon: MessageSquare, labelKey: 'messages', fallbackLabel: 'Farmer Messages', path: '/vet/messages' },
+      { key: 'community', icon: UsersRound, labelKey: 'community', fallbackLabel: 'Clinical Forum', path: '/community' },
+      { key: 'profile', icon: UserCircle, labelKey: 'profile', fallbackLabel: 'KVB Credentials', path: '/vet/profile' },
+    ],
+  },
+
+  AGGREGATOR: {
+    roleId: 'AGGREGATOR',
+    themeName: 'aggregator',
+    portalTitle: 'Arvion',
+    portalSubtitle: 'Milk Logistics & Aggregation',
+    portalIcon: Droplets,
+    accentBorder: 'border-l-blue-600',
+    accentBg: 'bg-blue-600',
+    accentText: 'text-blue-800',
+    accentLight: 'bg-blue-50',
+    primaryNav: [
+      { key: 'dashboard', icon: LayoutDashboard, labelKey: 'dashboard', fallbackLabel: 'Logistics Overview', path: '/aggregator/dashboard' },
+      { key: 'intelligence', icon: BrainCircuit, labelKey: 'intelligence', fallbackLabel: 'Supply Forecast', path: '/aggregator/dashboard?tab=intelligence' },
+      { key: 'messages', icon: MessageSquare, labelKey: 'messages', fallbackLabel: 'Farmer Chat', path: '/aggregator/dashboard?tab=messages' },
+    ],
+    secondaryNav: [
+      { key: 'community', icon: Users, labelKey: 'community', fallbackLabel: 'Dairy Network', path: '/community' },
+      { key: 'alerts', icon: Bell, labelKey: 'alerts', fallbackLabel: 'Quality Alerts', path: '/aggregator/dashboard?tab=alerts' },
+    ],
+  },
+
+  ADMIN: {
+    roleId: 'ADMIN',
+    themeName: 'admin',
+    portalTitle: 'Arvion',
+    portalSubtitle: 'Platform Administration',
+    portalIcon: Shield,
+    accentBorder: 'border-l-slate-800',
+    accentBg: 'bg-slate-900',
+    accentText: 'text-slate-900',
+    accentLight: 'bg-slate-100',
+    primaryNav: [
+      { key: 'dashboard', icon: LayoutDashboard, labelKey: 'dashboard', fallbackLabel: 'Overview', path: '/admin/dashboard' },
+      { key: 'farmers', icon: Users, labelKey: 'farmers', fallbackLabel: 'Farmers & Herds', path: '/admin/farmers' },
+      { key: 'vets', icon: Stethoscope, labelKey: 'vets', fallbackLabel: 'Veterinarians', path: '/admin/vets' },
+      { key: 'subscriptions', icon: CreditCard, labelKey: 'subscriptions', fallbackLabel: 'Subscriptions', path: '/admin/subscriptions' },
+    ],
+    secondaryNav: [
+      { key: 'tickets', icon: Ticket, labelKey: 'tickets', fallbackLabel: 'Support Tickets', path: '/admin/tickets' },
+      { key: 'announcements', icon: Megaphone, labelKey: 'announcements', fallbackLabel: 'Announcements', path: '/admin/announcements' },
+      { key: 'logs', icon: Terminal, labelKey: 'logs', fallbackLabel: 'Audit & System Logs', path: '/admin/logs' },
+      { key: 'settings', icon: Settings, labelKey: 'settings', fallbackLabel: 'Platform Settings', path: '/admin/settings' },
+      { key: 'community', icon: UsersRound, labelKey: 'community', fallbackLabel: 'Community Moderation', path: '/community' },
+    ],
+  },
+};
+
+export const getRoleConfig = (userRole) => {
+  return ROLE_CONFIGS[userRole] || ROLE_CONFIGS.FARMER;
+};

@@ -74,9 +74,13 @@ class DairyCommunityViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Invite captured in test mode.', 'member': CommunityMemberSerializer(member).data}, status=status.HTTP_200_OK)
 
 
+from core.pagination import CommunityPostPagination
+
+
 class CommunityPostViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = CommunityPostSerializer
+    pagination_class = CommunityPostPagination
 
     def get_queryset(self):
         queryset = CommunityPost.objects.select_related('farm', 'author', 'community')
@@ -89,7 +93,7 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(post_type=post_type)
         if community_id:
             queryset = queryset.filter(community_id=community_id)
-        return queryset[:100]
+        return queryset
 
     def perform_create(self, serializer):
         farm = get_user_farm(self.request.user)

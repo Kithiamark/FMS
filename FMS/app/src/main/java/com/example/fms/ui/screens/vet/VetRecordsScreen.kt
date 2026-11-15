@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fms.ui.components.cards.IslandCard
@@ -87,7 +88,7 @@ fun VetRecordsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 110.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Search Bar
@@ -158,5 +159,21 @@ fun VetRecordsScreen(
                 Spacer(modifier = Modifier.height(70.dp))
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Vet Records Light")
+@Composable
+fun VetRecordsScreenPreview() {
+    FMSTheme(darkTheme = false) {
+        VetRecordsScreen()
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Vet Records Dark")
+@Composable
+fun VetRecordsScreenDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        VetRecordsScreen()
     }
 }

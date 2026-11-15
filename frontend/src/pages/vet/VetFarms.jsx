@@ -5,6 +5,7 @@ import { VetLayout } from '../../components/Layout/VetLayout';
 import { Button } from '../../components/ui/Button';
 import { Building, MapPin, ChevronRight, Users, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const fetchVetFarms = async () => {
     const { data } = await api.get('/vet/data/farms/');
@@ -12,6 +13,7 @@ const fetchVetFarms = async () => {
 };
 
 const VetFarms = () => {
+    const { t } = useTranslation();
     const { data: farms = [], isLoading } = useQuery({ queryKey: ['vetFarms'], queryFn: fetchVetFarms });
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -25,8 +27,8 @@ const VetFarms = () => {
             <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-heading font-bold text-vet-navy">Connected Dairy Farms</h1>
-                        <p className="text-sm text-gray-500">Farms under your veterinary care and clinical oversight ({farms.length})</p>
+                        <h1 className="text-2xl font-heading font-bold text-vet-navy">{t('connected_farms_title')}</h1>
+                        <p className="text-sm text-gray-500">{t('connected_farms_subtitle')} ({farms.length})</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative flex-1 sm:w-64">
@@ -40,7 +42,7 @@ const VetFarms = () => {
                             />
                         </div>
                         <Link to="/vet/connections">
-                            <Button variant="ghost" className="border border-gray-200 text-xs flex items-center gap-1.5 whitespace-nowrap">
+                            <Button variant="ghost" className="border border-gray-200 text-xs flex items-center gap-1.5 whitespace-nowrap touch-target">
                                 <Users size={15} /> Network Requests
                             </Button>
                         </Link>
@@ -52,12 +54,12 @@ const VetFarms = () => {
                 ) : filteredFarms.length === 0 ? (
                     <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center space-y-3">
                         <Building size={40} className="mx-auto text-gray-300" />
-                        <h3 className="font-bold text-gray-700">No client farms found</h3>
+                        <h3 className="font-bold text-gray-700">{t('client_farms_empty')}</h3>
                         <p className="text-sm text-gray-500 max-w-md mx-auto">
-                            When dairy farmers send you connection requests and you approve them, their herds and milk records will appear here.
+                            {t('client_farms_empty_desc')}
                         </p>
                         <Link to="/vet/connections">
-                            <Button className="bg-vet-teal text-white text-xs">Review Pending Requests</Button>
+                            <Button className="bg-vet-teal text-white text-xs touch-target">{t('review_pending_requests')}</Button>
                         </Link>
                     </div>
                 ) : (
@@ -88,8 +90,8 @@ const VetFarms = () => {
                                 </div>
 
                                 <Link to={`/vet/farms/${farm.id}`}>
-                                    <Button className="w-full flex items-center justify-center gap-2 bg-vet-teal hover:bg-vet-teal-dark text-white rounded-xl text-sm font-semibold">
-                                        View Herd & Records <ChevronRight size={16} />
+                                    <Button className="w-full flex items-center justify-center gap-2 bg-vet-teal hover:bg-vet-teal-dark text-white rounded-xl text-sm font-semibold touch-target">
+                                        {t('view_herd_records')} <ChevronRight size={16} />
                                     </Button>
                                 </Link>
                             </div>

@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { CustomDatePicker } from '../../components/ui/CustomDatePicker';
 import { CalendarModal } from '../../components/ui/CalendarModal';
 import { useToast } from '../../components/ui/Toast';
+import { useTranslation } from 'react-i18next';
 
 const fetchVisits = async () => {
     const { data } = await api.get('/vet/data/visits/');
@@ -20,6 +21,7 @@ const fetchFarms = async () => {
 };
 
 const VetVisits = () => {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const { addToast } = useToast();
     const { data: visits = [], isLoading } = useQuery({ queryKey: ['vetVisits'], queryFn: fetchVisits });
@@ -72,22 +74,22 @@ const VetVisits = () => {
             <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold font-heading text-vet-navy">Farm Visits & Rounds</h1>
-                        <p className="text-sm text-gray-500">Plan herd checkups, routine vaccinations, and emergency consultations</p>
+                        <h1 className="text-2xl font-bold font-heading text-vet-navy">{t('farm_visits_title')}</h1>
+                        <p className="text-sm text-gray-500">{t('farm_visits_subtitle')}</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <button 
                             type="button"
                             onClick={() => setIsCalendarViewOpen(true)}
-                            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition"
+                            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition touch-target"
                         >
-                            <Calendar size={16} className="text-vet-teal" /> Calendar View
+                            <Calendar size={16} className="text-vet-teal" /> {t('calendar_view')}
                         </button>
                         <Button 
                             onClick={() => setIsScheduleOpen(true)}
-                            className="flex items-center gap-1.5 bg-vet-teal text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-opacity-90 shadow-sm"
+                            className="flex items-center gap-1.5 bg-vet-teal text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-opacity-90 shadow-sm touch-target"
                         >
-                            <Plus size={16} /> Schedule Visit
+                            <Plus size={16} /> {t('schedule_visit')}
                         </Button>
                     </div>
                 </div>

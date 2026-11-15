@@ -122,7 +122,16 @@ fun SplashScreen(
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Splash Screen Light")
 @Composable
 fun SplashScreenPreview() {
-    FMSTheme {
+    FMSTheme(darkTheme = false) {
         SplashScreen()
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Splash Screen Dark")
+@Composable
+fun SplashScreenDarkPreview() {
+    FMSTheme(darkTheme = true) {
+        SplashScreen()
+    }
+}
+

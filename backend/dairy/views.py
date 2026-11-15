@@ -242,3 +242,37 @@ class MilkRecordViewSet(viewsets.ModelViewSet):
                 'total_calves': float(queryset.aggregate(total=Sum('calf_litres'))['total'] or 0),
             }
         })
+
+    @action(detail=False, methods=['post'], url_path='allocate')
+    def allocate(self, request):
+        """
+        Record a day's bulk allocation (calf, home use, sold, retail, spoilage).
+        Updates or attributes the day's distribution for the farm.
+        """
+        user_farm = get_user_farm(request.user)
+        date = request.data.get('date') or timezone.now().date()
+        calf = float(request.data.get('calf_litres') or 0.0)
+        home = float(request.data.get('home_use_litres') or 0.0)
+        sold = float(request.data.get('sold_litres') or 0.0)
+        notes = request.data.get('notes', '')
+
+        records = MilkRecord.objects.filter(animal__farm=user_farm, date=date)
+        if records.exists():
+            first = records.first()
+            first.calf_litres = calf
+            first.home_use_litres = home
+            first.sold_litres = sold
+            if notes:
+                first.notes = f"{first.notes} | {notes}".strip(" |")
+            first.save()
+
+        return Response({
+            'status': 'success',
+            'date': str(date),
+            'allocated': {
+                'calf_litres': calf,
+                'home_use_litres': home,
+                'sold_litres': sold,
+            }
+        }, status=status.HTTP_200_OK)
+

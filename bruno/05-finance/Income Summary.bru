@@ -1,0 +1,15 @@
+meta {
+  name: "Income Summary"
+  type: "http"
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/income/summary/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

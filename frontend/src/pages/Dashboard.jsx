@@ -35,6 +35,8 @@ import { useFarmHealth } from '../hooks/useAI';
 import { useFinanceSummary } from '../hooks/useFinance';
 import { useSubscription } from '../hooks/useSubscription';
 import { useAlerts } from '../hooks/useAlerts';
+import { StatCard } from '../components/ui/StatCard';
+import { getTimeAwareGreetingKey } from '../utils/greeting';
 
 const formatLitres = (value) => `${Number(value || 0).toFixed(1)} L`;
 const formatMoney = (value) => `KES ${Number(value || 0).toLocaleString()}`;
@@ -170,7 +172,7 @@ const Dashboard = () => {
                     {todayDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                   </p>
                   <h1 className="mt-2 font-heading text-3xl font-bold tracking-normal md:text-4xl">
-                    Good morning, {user?.full_name?.split(' ')[0] || 'Farmer'}
+                    {t(getTimeAwareGreetingKey())}, {user?.full_name?.split(' ')[0] || t('farmer', 'Farmer')}
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50">
                     {user?.farm?.name || 'Your farm'} is ready for today’s production, animal health, and cash-flow checks.
@@ -210,40 +212,40 @@ const Dashboard = () => {
         </div>
 
         <aside className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-          <div className="rounded-[1.4rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-[1.4rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Dairy Alerts</p>
-                <h2 className="mt-1 text-2xl font-bold text-slate-950 dark:text-slate-100">Today’s Watchlist</h2>
+                <p className="text-sm font-semibold text-emerald-700">Dairy Alerts</p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-950">Today’s Watchlist</h2>
               </div>
               <AlertTriangle className="text-amber-600" size={26} />
             </div>
             <div className="space-y-3">
               {alertsList.length > 0 ? (
                 alertsList.map((alert) => (
-                  <div key={alert.id || alert.title} className="flex gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
+                  <div key={alert.id || alert.title} className="flex gap-3 rounded-2xl bg-slate-50 p-3">
                     <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${alert.tone}`}>
                       <alert.icon size={19} />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-slate-100 capitalize">{alert.title.toLowerCase()}</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{alert.detail}</p>
+                      <p className="font-bold text-slate-900 capitalize">{alert.title.toLowerCase()}</p>
+                      <p className="text-sm text-slate-500">{alert.detail}</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400">
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500">
                   No urgent alerts for today. Your herd is on track!
                 </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-[1.4rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-[1.4rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Active Animals</p>
-                <p className="mt-1 text-3xl font-bold text-slate-950 dark:text-slate-100">{activeAnimals}</p>
+                <p className="text-sm font-semibold text-slate-500">Active Animals</p>
+                <p className="mt-1 text-3xl font-bold text-slate-950">{activeAnimals}</p>
               </div>
               <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700">
                 <Activity size={26} />
@@ -256,26 +258,35 @@ const Dashboard = () => {
         </aside>
       </section>
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          { title: t('today_milk'), value: formatLitres(milkData?.total_farm_yield), detail: `${milkData?.records_count || 0} records`, icon: Milk },
-          { title: 'Home use', value: formatLitres(milkData?.usage?.home), detail: 'Household allocation', icon: Droplets },
-          { title: t('expenses_this_month'), value: formatMoney(financeData?.expense_total), detail: 'Month to date', icon: DollarSign },
-          { title: t('pending_alerts'), value: highRiskCount, detail: highRiskCount ? 'Needs attention' : 'All clear', icon: AlertTriangle },
-        ].map((item) => (
-          <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-500">{item.title}</p>
-                <p className="mt-2 text-2xl font-bold text-slate-950">{item.value}</p>
-              </div>
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-                <item.icon size={21} />
-              </div>
-            </div>
-            <p className="mt-4 text-sm font-medium text-slate-500">{item.detail}</p>
-          </div>
-        ))}
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          title={t('today_milk')}
+          value={formatLitres(milkData?.total_farm_yield)}
+          subtitle={`${milkData?.records_count || 0} records logged`}
+          icon={Milk}
+          accent="farmer"
+        />
+        <StatCard
+          title="Home Use Allocation"
+          value={formatLitres(milkData?.usage?.home)}
+          subtitle="Household consumption"
+          icon={Droplets}
+          accent="blue"
+        />
+        <StatCard
+          title={t('expenses_this_month')}
+          value={formatMoney(financeData?.expense_total)}
+          subtitle="Month to date"
+          icon={DollarSign}
+          accent="amber"
+        />
+        <StatCard
+          title={t('pending_alerts')}
+          value={highRiskCount}
+          subtitle={highRiskCount ? 'Action required' : 'Herd all clear'}
+          icon={AlertTriangle}
+          accent={highRiskCount ? 'red' : 'emerald'}
+        />
       </section>
 
       <section className="rounded-[1.4rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70">

@@ -154,3 +154,43 @@ class TestCommunityAggregatorAccess:
         assert surplus_post['author_organization'] == 'Green Valley Dairy'
         assert surplus_post['author_phone'] == '+254711111111'
         assert float(surplus_post['litres_available']) == 60.0
+        assert surplus_post['author_handle'] == f"@{self.farmer_user.handle}"
+
+    def test_community_posts_pagination_and_handle(self):
+        community = DairyCommunity.objects.create(
+            name='Pagination Test Network',
+            county='Kiambu',
+            created_by=self.farmer_user,
+        )
+
+        # Bulk create 25 posts
+        posts = [
+            CommunityPost(
+                community=community,
+                farm=self.farm,
+                author=self.farmer_user,
+                post_type=CommunityPost.PostType.DISCUSSION,
+                title=f'Test Topic #{i}',
+                body=f'Body content for topic #{i}',
+                county='Kiambu'
+            )
+            for i in range(25)
+        ]
+        CommunityPost.objects.bulk_create(posts)
+
+        self.client.force_authenticate(user=self.farmer_user)
+        res = self.client.get(f'/api/v1/community/posts/?community={community.id}')
+        assert res.status_code == status.HTTP_200_OK
+
+        # Verify DRF pagination structure
+        assert 'count' in res.data
+        assert res.data['count'] == 25
+        assert 'next' in res.data
+        assert len(res.data['results']) == 20
+        assert res.data['results'][0]['author_handle'] == f"@{self.farmer_user.handle}"
+
+        # Test page 2
+        res_page2 = self.client.get(f'/api/v1/community/posts/?community={community.id}&page=2')
+        assert res_page2.status_code == status.HTTP_200_OK
+        assert len(res_page2.data['results']) == 5
+
