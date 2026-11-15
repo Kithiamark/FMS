@@ -13,9 +13,9 @@ import {
 
 const PLAN_RATES = {
     'Trial': 0,
-    'Basic': 1000,
-    'Premium': 3000,
-    'Enterprise': 5000,
+    'Basic': 750,
+    'Premium': 1500,
+    'Enterprise': 3000,
     'BuyerStarter': 3500,
     'BuyerCommercial': 7500,
 };
@@ -41,7 +41,7 @@ const AdminSubscriptions = () => {
     const [activateSub, setActivateSub] = useState(null);
     const [activatePlan, setActivatePlan] = useState('Basic');
     const [activateMpesaRef, setActivateMpesaRef] = useState('');
-    const [activateAmount, setActivateAmount] = useState('1000');
+    const [activateAmount, setActivateAmount] = useState('750');
     const [activateDays, setActivateDays] = useState('30');
 
     // Override modal state
@@ -74,14 +74,14 @@ const AdminSubscriptions = () => {
         setActivateSub(sub);
         const plan = sub.plan && sub.plan !== 'Trial' ? sub.plan : 'Basic';
         setActivatePlan(plan);
-        setActivateAmount(PLAN_RATES[plan]?.toString() || '1000');
+        setActivateAmount(PLAN_RATES[plan]?.toString() || '750');
         setActivateMpesaRef(sub.mpesa_ref || '');
         setActivateDays('30');
     };
 
     const handlePlanChangeInActivate = (newPlan) => {
         setActivatePlan(newPlan);
-        setActivateAmount(PLAN_RATES[newPlan]?.toString() || '1000');
+        setActivateAmount(PLAN_RATES[newPlan]?.toString() || '750');
     };
 
     const handleSaveActivate = (e) => {
@@ -236,9 +236,9 @@ const AdminSubscriptions = () => {
                         >
                             <option value="ALL">All Plans</option>
                             <option value="Trial">Trial (Free)</option>
-                            <option value="Basic">Basic (KES 1,000)</option>
-                            <option value="Premium">Premium (KES 3,000)</option>
-                            <option value="Enterprise">Enterprise (KES 5,000)</option>
+                            <option value="Basic">Basic (KES 750)</option>
+                            <option value="Premium">Premium (KES 1,500)</option>
+                            <option value="Enterprise">Enterprise (KES 3,000)</option>
                             <option value="BuyerStarter">Buyer Starter (KES 3,500)</option>
                             <option value="BuyerCommercial">Buyer Commercial (KES 7,500)</option>
                         </select>
@@ -435,9 +435,9 @@ const AdminSubscriptions = () => {
                                 onChange={e => handlePlanChangeInActivate(e.target.value)}
                                 className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white font-medium focus:ring-1 focus:ring-admin-accent"
                             >
-                                <option value="Basic">Basic Plan (KES 1,000/mo)</option>
-                                <option value="Premium">Premium Plan (KES 3,000/mo)</option>
-                                <option value="Enterprise">Enterprise Plan (KES 5,000/mo)</option>
+                                <option value="Basic">Basic Plan (KES 750/mo)</option>
+                                <option value="Premium">Premium Plan (KES 1,500/mo)</option>
+                                <option value="Enterprise">Enterprise Plan (KES 3,000/mo)</option>
                                 <option value="BuyerStarter">Milk Buyer Starter Route (KES 3,500/mo)</option>
                                 <option value="BuyerCommercial">Milk Buyer Commercial Co-op (KES 7,500/mo)</option>
                             </select>
@@ -534,9 +534,9 @@ const AdminSubscriptions = () => {
                                     className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white font-medium focus:ring-1 focus:ring-admin-accent"
                                 >
                                     <option value="Trial">Free Trial (KES 0)</option>
-                                    <option value="Basic">Basic (KES 1,000/mo)</option>
-                                    <option value="Premium">Premium (KES 3,000/mo)</option>
-                                    <option value="Enterprise">Enterprise (KES 5,000/mo)</option>
+                                    <option value="Basic">Basic (KES 750/mo)</option>
+                                    <option value="Premium">Premium (KES 1,500/mo)</option>
+                                    <option value="Enterprise">Enterprise (KES 3,000/mo)</option>
                                     <option value="BuyerStarter">Buyer Starter Route (KES 3,500/mo)</option>
                                     <option value="BuyerCommercial">Buyer Commercial Co-op (KES 7,500/mo)</option>
                                 </select>

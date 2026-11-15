@@ -70,7 +70,7 @@ PLAN_CATALOG = {
         ],
     },
     Subscription.Plan.BASIC: {
-        'price_kes': 1000,
+        'price_kes': 750,
         'name': 'Basic',
         'features': [
             'Unlimited milk, herd, and financial record logging',
@@ -80,7 +80,7 @@ PLAN_CATALOG = {
         ],
     },
     Subscription.Plan.PREMIUM: {
-        'price_kes': 3000,
+        'price_kes': 1500,
         'name': 'Premium',
         'features': [
             'Everything in Basic',
@@ -91,7 +91,7 @@ PLAN_CATALOG = {
         ],
     },
     Subscription.Plan.ENTERPRISE: {
-        'price_kes': 5000,
+        'price_kes': 3000,
         'name': 'Enterprise',
         'features': [
             'Everything in Premium',

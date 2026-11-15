@@ -26,11 +26,6 @@ class CommunityPost(models.Model):
 
     class Meta:
         ordering = ['-is_pinned', '-created_at']
-        indexes = [
-            models.Index(fields=['community', '-created_at']),
-            models.Index(fields=['county', '-created_at']),
-            models.Index(fields=['post_type', '-created_at']),
-        ]
 
     def __str__(self):
         return f"{self.post_type}: {self.title}"

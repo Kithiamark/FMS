@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.sp
 import com.example.fms.ui.components.buttons.IslandButton
 import com.example.fms.ui.components.cards.IslandCard
 import com.example.fms.ui.components.common.PillBadge
-import com.example.fms.ui.components.modals.IslandModal
 import com.example.fms.ui.theme.*
 
 data class VetDoctor(
@@ -224,7 +223,7 @@ fun FindVetScreen(
             // Directory List
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 110.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 items(filteredVets) { vet ->
@@ -247,161 +246,91 @@ fun FindVetScreen(
         }
     }
 
-    // Book Farm Visit Bottom Sheet
+    // Book Farm Visit Dialog
     if (selectedVetForBooking != null) {
         val vet = selectedVetForBooking!!
-        ModalBottomSheet(
+        AlertDialog(
             onDismissRequest = { selectedVetForBooking = null },
-            containerColor = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 10.dp, bottom = 6.dp)
-                        .width(36.dp)
-                        .height(5.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.CalendarToday,
+                    contentDescription = null,
+                    tint = EmeraldPrimary,
+                    modifier = Modifier.size(40.dp)
                 )
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Book Clinical Visit",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "${vet.name} · ${vet.title}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    PillBadge(
-                        text = "${vet.distanceKm} km",
-                        containerColor = EmeraldPrimary.copy(alpha = 0.15f),
-                        contentColor = EmeraldPrimary
+            },
+            title = {
+                Text(
+                    text = "Book Visit: ${vet.name}",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Specify symptoms or consultation reason for this on-farm visit.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = bookingReason,
+                        onValueChange = { bookingReason = it },
+                        label = { Text("Reason (e.g. Mastitis check on Cow #104)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = bookingDate,
+                        onValueChange = { bookingDate = it },
+                        label = { Text("Preferred Arrival Date & Time") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
                 }
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-
-                OutlinedTextField(
-                    value = bookingReason,
-                    onValueChange = { bookingReason = it },
-                    label = { Text("Clinical Consultation Reason") },
-                    placeholder = { Text("e.g. Quarter swelling & reduced yield on Cow #104") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldPrimary,
-                        cursorColor = EmeraldPrimary
-                    )
-                )
-
-                OutlinedTextField(
-                    value = bookingDate,
-                    onValueChange = { bookingDate = it },
-                    label = { Text("Preferred Arrival Date & Time") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldPrimary,
-                        cursorColor = EmeraldPrimary
-                    )
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        selectedVetForBooking = null
+                        showBookingSuccess = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = { selectedVetForBooking = null },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            selectedVetForBooking = null
-                            showBookingSuccess = true
-                        },
-                        modifier = Modifier.weight(1.5f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Rounded.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Confirm Booking", fontWeight = FontWeight.Bold)
-                    }
+                    Text("Confirm Appointment")
                 }
-            }
-        }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedVetForBooking = null }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 
     if (showBookingSuccess) {
-        ModalBottomSheet(
+        AlertDialog(
             onDismissRequest = { showBookingSuccess = false },
-            containerColor = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 10.dp, bottom = 6.dp)
-                        .width(36.dp)
-                        .height(5.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = null,
+                    tint = EmeraldPrimary,
+                    modifier = Modifier.size(44.dp)
                 )
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = EmeraldPrimary.copy(alpha = 0.15f),
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.CheckCircle,
-                            contentDescription = null,
-                            tint = EmeraldPrimary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-
+            },
+            title = {
                 Text(
                     text = "Visit Request Dispatched",
-                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center
                 )
-
+            },
+            text = {
                 Text(
                     text = "Your booking request has been sent to the practitioner. You will receive an SMS and push confirmation once approved.",
                     fontSize = 13.sp,
@@ -409,17 +338,18 @@ fun FindVetScreen(
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
+            },
+            confirmButton = {
                 Button(
                     onClick = { showBookingSuccess = false },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Done", fontWeight = FontWeight.Bold)
+                    Text("Done")
                 }
-            }
-        }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 }
 

@@ -21,9 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fms.ui.components.buttons.IslandButton
 import com.example.fms.ui.components.common.PillBadge
-import com.example.fms.ui.components.modals.IslandModal
 import com.example.fms.ui.theme.EmeraldPrimary
-import com.example.fms.ui.theme.FMSTheme
 import com.example.fms.ui.theme.RoseRed
 
 enum class EntryStep {
@@ -242,49 +240,27 @@ fun DailyMilkEntryScreen(
     }
 
     if (showSuccessDialog) {
-        IslandModal(
-            isOpen = showSuccessDialog,
+        AlertDialog(
             onDismissRequest = {
                 showSuccessDialog = false
                 onSubmitSuccess()
             },
-            title = "Records Saved",
-            icon = Icons.Rounded.Check,
-            badgeText = "Yield Logged Successfully",
+            title = { Text("Records Saved", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("Total ${"%.1f".format(totalProduced)} Litres successfully committed to farm records and synchronized with offline storage.")
+            },
             confirmButton = {
                 Button(
                     onClick = {
                         showSuccessDialog = false
                         onSubmitSuccess()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
                 ) {
-                    Text("Done", fontWeight = FontWeight.Bold)
+                    Text("Done")
                 }
-            }
-        ) {
-            Text(
-                text = "Total ${"%.1f".format(totalProduced)} Litres successfully committed to farm records and synchronized with offline storage.",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Daily Milk Entry Light")
-@Composable
-fun DailyMilkEntryScreenPreview() {
-    FMSTheme(darkTheme = false) {
-        DailyMilkEntryScreen()
-    }
-}
-
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "Daily Milk Entry Dark")
-@Composable
-fun DailyMilkEntryScreenDarkPreview() {
-    FMSTheme(darkTheme = true) {
-        DailyMilkEntryScreen()
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 }

@@ -34,10 +34,3 @@ fix_*.py
 update_*.py
 .neon
 .env.local
-
-# Archives and build artifacts
-*.zip
-*.tar.gz
-release/
-**/build/
-FMS/app/release/

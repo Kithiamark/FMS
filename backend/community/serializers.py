@@ -4,7 +4,6 @@ from .models import CommunityMember, CommunityPost, DairyCommunity
 
 class CommunityMemberSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.full_name', read_only=True)
-    user_handle = serializers.CharField(source='user.handle', read_only=True)
     user_role = serializers.CharField(source='user.role', read_only=True)
     farm_name = serializers.CharField(source='farm.name', read_only=True)
     organization_name = serializers.SerializerMethodField()
@@ -38,7 +37,6 @@ class DairyCommunitySerializer(serializers.ModelSerializer):
 
 class CommunityPostSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.full_name', read_only=True)
-    author_handle = serializers.SerializerMethodField()
     author_role = serializers.CharField(source='author.role', read_only=True)
     author_phone = serializers.CharField(source='author.phone_number', read_only=True)
     author_organization = serializers.SerializerMethodField()
@@ -49,14 +47,6 @@ class CommunityPostSerializer(serializers.ModelSerializer):
         model = CommunityPost
         fields = '__all__'
         read_only_fields = ('farm', 'author', 'is_pinned')
-
-    def get_author_handle(self, obj):
-        if obj.author and getattr(obj.author, 'handle', None):
-            return f"@{obj.author.handle}"
-        if obj.author and obj.author.full_name:
-            import re
-            return f"@{re.sub(r'[^a-z0-9_]', '_', obj.author.full_name.lower()).strip('_')}"
-        return '@farmer'
 
     def get_author_organization(self, obj):
         if not obj.author:

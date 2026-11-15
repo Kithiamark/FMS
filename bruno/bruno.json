@@ -1,7 +1,0 @@
-version = "1"
-name = "FMS API"
-type = "collection"
-ignore = [
-  "node_modules",
-  ".git"
-]

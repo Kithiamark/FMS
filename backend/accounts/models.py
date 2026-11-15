@@ -36,15 +36,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         ADMIN = 'ADMIN', _('Admin')
 
     phone_number = PhoneNumberField(unique=True, region='KE')
-    handle = models.CharField(
-        _('handle'),
-        max_length=50,
-        unique=True,
-        null=True,
-        blank=True,
-        db_index=True,
-        help_text=_('Unique social and community handle without spaces (e.g. baraka_farm, kiprono_dvm)'),
-    )
     full_name = models.CharField(_('full name'), max_length=255)
     email = models.EmailField(_('email address'), blank=True, null=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.FARMER)
@@ -78,29 +69,5 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'phone_number'
     REQUIRED_FIELDS = ['full_name']
 
-    @staticmethod
-    def normalize_handle(handle_str):
-        if not handle_str:
-            return None
-        clean = handle_str.strip().lstrip('@').lower()
-        import re
-        clean = re.sub(r'[^a-z0-9_]', '_', clean)
-        clean = re.sub(r'_+', '_', clean).strip('_')
-        return clean or None
-
-    def save(self, *args, **kwargs):
-        if self.handle:
-            self.handle = self.normalize_handle(self.handle)
-        else:
-            base_seed = self.normalize_handle(self.full_name) or 'user'
-            candidate = base_seed
-            counter = 1
-            while User.objects.filter(handle=candidate).exclude(pk=self.pk).exists():
-                candidate = f"{base_seed}_{counter}"
-                counter += 1
-            self.handle = candidate
-        super().save(*args, **kwargs)
-
     def __str__(self):
-        handle_display = f" (@{self.handle})" if self.handle else ""
-        return f"{self.full_name}{handle_display} ({self.phone_number})"
+        return f"{self.full_name} ({self.phone_number})"
