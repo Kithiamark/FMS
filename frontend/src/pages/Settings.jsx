@@ -158,7 +158,73 @@ const Settings = () => {
 
   if (isLoading) return <div className="p-8 text-gray-600 dark:text-slate-300">Loading settings...</div>;
   const currentPlan = subscriptionData?.current?.plan || user?.farm?.subscription?.plan || 'Trial';
-  const allPlans = subscriptionData?.plans || {};
+  const DEFAULT_PLANS = {
+    Trial: {
+      name: 'Free first month',
+      price_kes: 0,
+      features: [
+        'One month full trial to train the farm learning profile',
+        'Daily milk yield and herd record logging',
+        'Expenses, revenues, and cashflow tracking',
+        'Full AI assistant and vet directory access during trial',
+      ],
+    },
+    Basic: {
+      name: 'Basic',
+      price_kes: 1000,
+      features: [
+        'Unlimited milk, herd, and financial record logging',
+        'Direct vet consultation requests, texting, and reviews',
+        'AI herd production & disease risk advisory',
+        'County community dairy trends and milk pricing alerts',
+      ],
+    },
+    Premium: {
+      name: 'Premium',
+      price_kes: 3000,
+      features: [
+        'Everything in Basic',
+        'Personalised breeding and lactation optimization tips',
+        'Weather-aware herd management routines',
+        'Automated SMS notifications and vaccination reminders',
+        'Deeper AI diagnostic recommendations from historical yields',
+      ],
+    },
+    Enterprise: {
+      name: 'Enterprise',
+      price_kes: 5000,
+      features: [
+        'Everything in Premium',
+        'Multi-user farm management with worker sub-accounts',
+        'Worker activity logging and audit trail controls',
+        'Commercial bulk reporting and exportable tax ledgers',
+        'Dedicated agricultural support desk',
+      ],
+    },
+    BuyerStarter: {
+      name: 'Milk Buyer Starter Route',
+      price_kes: 3500,
+      features: [
+        'Single collection route and chilling station management',
+        'Digital milk intake logging and supplier farmer directory',
+        'Automated milk collection SMS receipts for farmers',
+        'Lactometer and quality rejection recording',
+      ],
+    },
+    BuyerCommercial: {
+      name: 'Milk Buyer Commercial Co-op',
+      price_kes: 7500,
+      features: [
+        'Multi-route collection and bulk chilling tank tracking',
+        'Batch quality, density, and fat testing ledger',
+        'Automated M-Pesa farmer payroll and payout export files',
+        'Unlimited supplier farmers and cooperative dispatch manifests',
+      ],
+    },
+  };
+  const allPlans = (subscriptionData?.plans && Object.keys(subscriptionData.plans).length > 0)
+    ? subscriptionData.plans
+    : DEFAULT_PLANS;
   const isAggregator = user?.role === 'AGGREGATOR';
   const plans = Object.fromEntries(
     Object.entries(allPlans).filter(([planKey]) => {
@@ -372,6 +438,52 @@ const Settings = () => {
             Your subscription has expired, but all features remain temporarily unlocked. Please complete your M-Pesa renewal below before the grace period ends to avoid interruption.
           </div>
         )}
+
+        {/* Prominent Lipa na M-Pesa Paybill Banner */}
+        <div className="mb-6 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50 via-emerald-100/40 to-teal-50 p-5 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:via-slate-900 dark:to-emerald-950/30 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-700 text-white uppercase tracking-wider shadow-sm">
+                  Lipa na M-Pesa
+                </span>
+                <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                  Official Safaricom Paybill
+                </span>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 pt-1">
+                <div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Business / Paybill No.</span>
+                  <span className="font-mono text-2xl font-black text-emerald-800 dark:text-emerald-400 tracking-tight">
+                    {subscriptionData?.paybill_number || '522533'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Account Number</span>
+                  <span className="font-mono text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                    {subscriptionData?.paybill_account || '1349921815'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                Pay via Safaricom M-Pesa to the Paybill details above, then click <strong>Subscribe</strong> or <strong>Renew</strong> on your chosen plan below to input your M-Pesa confirmation code.
+              </p>
+            </div>
+
+            <div className="shrink-0 rounded-xl bg-white/90 dark:bg-slate-900/90 p-4 border border-emerald-100 dark:border-emerald-900/50 text-xs shadow-sm max-w-md">
+              <p className="font-bold text-slate-900 dark:text-slate-100 mb-1.5 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Payment Steps
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                <li>Go to <strong>M-Pesa</strong> &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Paybill</strong></li>
+                <li>Enter Business: <strong className="font-mono text-emerald-700 dark:text-emerald-400">{subscriptionData?.paybill_number || '522533'}</strong></li>
+                <li>Enter Account: <strong className="font-mono text-slate-900 dark:text-slate-100">{subscriptionData?.paybill_account || '1349921815'}</strong></li>
+                <li>Enter plan amount &amp; your PIN</li>
+                <li>Click <strong>Subscribe via M-Pesa</strong> below to enter receipt</li>
+              </ol>
+            </div>
+          </div>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Object.entries(plans).map(([plan, details]) => (
