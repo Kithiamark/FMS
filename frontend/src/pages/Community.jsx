@@ -188,7 +188,7 @@ export const Community = () => {
     const formattedApiPosts = apiPosts.map(p => ({
       id: String(p.id),
       author_name: p.author_name || 'Dairy Farmer',
-      author_handle: `@${(p.author_name || 'farmer').toLowerCase().replace(/\s+/g, '_')}`,
+      author_handle: p.author_handle || `@${(p.author_name || 'farmer').toLowerCase().replace(/\s+/g, '_')}`,
       author_role: p.author_role || 'FARMER',
       is_vet_verified: p.author_role === 'VETERINARIAN' || p.is_vet_verified,
       kvb_number: p.kvb_number || (p.author_role === 'VETERINARIAN' ? 'KVB #4102' : null),

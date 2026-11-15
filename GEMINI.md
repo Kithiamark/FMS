@@ -21,3 +21,12 @@
 - Keep client-side cache and offline interaction state lean.
 - Do not bloat local Room database tables or session storage with redundant, nested, or ephemeral interaction metadata. Use streamlined, indexed entity models (such as lightweight `PostInteraction` and `CommunityInvite`) with minimal column footprint.
 
+## Feature Documentation & Tracking Invariant
+- Every new feature, route, screen, or API endpoint added to the codebase MUST be documented in persistent project markdown documentation (e.g. `docs/` or walkthrough reference).
+- Documentation entries must explicitly detail:
+  1. Purpose and user workflow.
+  2. Associated routes/screens across web (`frontend/src/`) and mobile (`FMS/app/`).
+  3. Corresponding backend models, endpoints, and permissions.
+  4. State models, key actions, and verification steps.
+- Untracked or undocumented features are strictly prohibited.
+

@@ -517,8 +517,70 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
             return Announcement.objects.all().order_by('-created_at')
         return Announcement.objects.filter(is_published=True).order_by('-created_at')
 
+    def _fanout_announcement(self, announcement):
+        if not announcement.is_published:
+            return
+
+        from alerts.models import Alert
+        audience = announcement.target_audience
+        target_users = set()
+
+        # 1. Target Vets
+        if audience in [Announcement.Audience.ALL, Announcement.Audience.VETS]:
+            vets = User.objects.filter(role=User.Role.VETERINARIAN, is_active=True)
+            target_users.update(vets)
+
+        # 2. Target Paying Farmers
+        if audience in [Announcement.Audience.ALL, Announcement.Audience.FARMERS, Announcement.Audience.ENTERPRISE]:
+            active_sub_owners = User.objects.filter(
+                role=User.Role.FARMER,
+                is_active=True,
+                farm__subscription__status=Subscription.Status.ACTIVE
+            )
+            target_users.update(active_sub_owners)
+
+        # Fanout to SupportTicket inbox thread and Alert notifications
+        for recipient in target_users:
+            farm = get_user_farm(recipient)
+            ticket_subject = f"[Platform Announcement] {announcement.title}"
+            ticket, created = SupportTicket.objects.get_or_create(
+                raised_by=recipient,
+                subject=ticket_subject,
+                defaults={
+                    'category': SupportTicket.Category.OTHER,
+                    'description': announcement.body,
+                    'status': SupportTicket.Status.OPEN,
+                    'priority': SupportTicket.Priority.HIGH,
+                    'farm': farm,
+                    'assigned_to': announcement.created_by,
+                }
+            )
+            if created or not ticket.messages.exists():
+                TicketMessage.objects.create(
+                    ticket=ticket,
+                    sender=announcement.created_by or recipient,
+                    content=announcement.body
+                )
+
+            # Create Alert notification for each farm
+            if farm:
+                Alert.objects.get_or_create(
+                    farm=farm,
+                    alert_type=Alert.AlertType.CUSTOM,
+                    message=f"📢 {announcement.title}: {announcement.body[:140]}",
+                    defaults={
+                        'created_by': announcement.created_by,
+                        'channel': Alert.Channel.PUSH,
+                    }
+                )
+
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        announcement = serializer.save(created_by=self.request.user)
+        self._fanout_announcement(announcement)
+
+    def perform_update(self, serializer):
+        announcement = serializer.save()
+        self._fanout_announcement(announcement)
 
 class SystemLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminUser]

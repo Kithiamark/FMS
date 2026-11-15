@@ -52,7 +52,9 @@ data class PlatformAuditLog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminDashboard() {
+fun AdminDashboard(
+    onNavigateToTickets: () -> Unit = {}
+) {
     val platformKpis = listOf(
         PlatformMetric("Total Registered Farms", "1,420", "+38 this month", Icons.Rounded.Agriculture, EmeraldPrimary),
         PlatformMetric("Daily Aggregate Yield", "48,250 L", "Across 4 counties", Icons.Rounded.WaterDrop, SkyBlue),
@@ -152,6 +154,16 @@ fun AdminDashboard() {
                     header = "Administrative Controls",
                     footer = "Security safeguards: broadcast notices notify all registered cooperative farmers."
                 ) {
+                    InsetRow(
+                        title = "Farmer Support & Dispute Desk",
+                        subtitle = "Review open tickets, payment receipts & inquiries",
+                        leadingIcon = Icons.Rounded.SupportAgent,
+                        iconTint = SkyBlue,
+                        iconBackgroundColor = SkyBlue.copy(alpha = 0.12f),
+                        showChevron = true,
+                        showDivider = true,
+                        onClick = onNavigateToTickets
+                    )
                     InsetRow(
                         title = "Broadcast Biosecurity Advisory",
                         subtitle = "Send emergency SMS and push notices to farmers",

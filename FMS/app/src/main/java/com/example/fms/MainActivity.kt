@@ -40,10 +40,17 @@ import com.example.fms.ui.screens.farmer.herd.AnimalDetailScreen
 import com.example.fms.ui.screens.farmer.herd.HerdOverviewScreen
 import com.example.fms.ui.screens.farmer.milk.DailyMilkEntryScreen
 import com.example.fms.ui.screens.farmer.milk.MilkAllocationScreen
+import com.example.fms.ui.screens.farmer.milk.ProductionDashboardScreen
 import com.example.fms.ui.screens.farmer.ai.AIOverviewScreen
 import com.example.fms.ui.screens.farmer.vets.FindVetScreen
+import com.example.fms.ui.screens.farmer.buyers.FindBuyerScreen
+import com.example.fms.ui.screens.farmer.alerts.AlertsScreen
 import com.example.fms.ui.screens.settings.SettingsScreen
+import com.example.fms.ui.screens.vet.VetFarmsScreen
+import com.example.fms.ui.screens.vet.VetVisitsScreen
+import com.example.fms.ui.screens.admin.AdminTicketsScreen
 import com.example.fms.ui.screens.worker.MilkingKeypadScreen
+import com.example.fms.ui.screens.worker.WorkerTasksScreen
 import com.example.fms.ui.theme.FMSTheme
 
 enum class AppDestination {
@@ -54,12 +61,19 @@ enum class AppDestination {
     MAIN_APP,
     DAILY_MILK_ENTRY,
     MILK_ALLOCATION,
+    PRODUCTION_DASHBOARD,
     AI_OVERVIEW,
     HERD_OVERVIEW,
     ANIMAL_DETAIL,
     FINANCE,
     FIND_VET,
+    FIND_BUYER,
+    ALERTS,
+    WORKER_TASKS,
     WORKER_KEYPAD,
+    VET_FARMS,
+    VET_VISITS,
+    ADMIN_TICKETS,
     DIRECT_MESSAGE
 }
 
@@ -299,8 +313,47 @@ fun MainAppShell(
                             onBackClick = { onNavigateTo(AppDestination.MAIN_APP) }
                         )
                     }
+                    AppDestination.FIND_BUYER -> {
+                        FindBuyerScreen(
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) }
+                        )
+                    }
+                    AppDestination.ALERTS -> {
+                        AlertsScreen(
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) }
+                        )
+                    }
+                    AppDestination.WORKER_TASKS -> {
+                        WorkerTasksScreen(
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) },
+                            isEnterpriseUser = true,
+                            userRole = activeRole.name
+                        )
+                    }
+                    AppDestination.PRODUCTION_DASHBOARD -> {
+                        ProductionDashboardScreen(
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) },
+                            onNavigateToRecord = { onNavigateTo(AppDestination.DAILY_MILK_ENTRY) },
+                            onNavigateToAllocation = { onNavigateTo(AppDestination.MILK_ALLOCATION) }
+                        )
+                    }
                     AppDestination.WORKER_KEYPAD -> {
                         MilkingKeypadScreen(
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) }
+                        )
+                    }
+                    AppDestination.VET_FARMS -> {
+                        VetFarmsScreen(
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) }
+                        )
+                    }
+                    AppDestination.VET_VISITS -> {
+                        VetVisitsScreen(
+                            onBackClick = { onNavigateTo(AppDestination.MAIN_APP) }
+                        )
+                    }
+                    AppDestination.ADMIN_TICKETS -> {
+                        AdminTicketsScreen(
                             onBackClick = { onNavigateTo(AppDestination.MAIN_APP) }
                         )
                     }
@@ -329,14 +382,24 @@ fun MainAppShell(
                                     onNavigateToRecordMilk = { onNavigateTo(AppDestination.DAILY_MILK_ENTRY) },
                                     onNavigateToAllocation = { onNavigateTo(AppDestination.MILK_ALLOCATION) },
                                     onNavigateToHerd = { onNavigateTo(AppDestination.HERD_OVERVIEW) },
-                                    onNavigateToFinance = { onNavigateTo(AppDestination.FINANCE) }
+                                    onNavigateToFinance = { onNavigateTo(AppDestination.FINANCE) },
+                                    onNavigateToFindBuyer = { onNavigateTo(AppDestination.FIND_BUYER) },
+                                    onNavigateToAlerts = { onNavigateTo(AppDestination.ALERTS) },
+                                    onNavigateToTasks = { onNavigateTo(AppDestination.WORKER_TASKS) },
+                                    onNavigateToProduction = { onNavigateTo(AppDestination.PRODUCTION_DASHBOARD) }
                                 )
                                 UserRole.FARM_WORKER -> WorkerDashboard(
-                                    onNavigateToMilkLog = { onNavigateTo(AppDestination.WORKER_KEYPAD) }
+                                    onNavigateToMilkLog = { onNavigateTo(AppDestination.WORKER_KEYPAD) },
+                                    onNavigateToTasks = { onNavigateTo(AppDestination.WORKER_TASKS) }
                                 )
-                                UserRole.VETERINARIAN -> VetDashboard()
+                                UserRole.VETERINARIAN -> VetDashboard(
+                                    onNavigateToVisits = { onNavigateTo(AppDestination.VET_VISITS) },
+                                    onNavigateToFarms = { onNavigateTo(AppDestination.VET_FARMS) }
+                                )
                                 UserRole.AGGREGATOR -> AggregatorDashboard()
-                                UserRole.ADMIN -> AdminDashboard()
+                                UserRole.ADMIN -> AdminDashboard(
+                                    onNavigateToTickets = { onNavigateTo(AppDestination.ADMIN_TICKETS) }
+                                )
                             }
                         }
                         MainNavTab.SECONDARY -> {

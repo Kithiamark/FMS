@@ -474,6 +474,10 @@ const Settings = () => {
                 <span className="font-bold text-slate-900 dark:text-slate-100">{profile.full_name || '—'}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Community Handle</span>
+                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">@{user?.handle || 'farmer'}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-500">Phone Number</span>
                 <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{user?.phone_number || '—'}</span>
               </div>
@@ -783,16 +787,16 @@ const Settings = () => {
               <div className="flex items-start gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-bold text-white">1</span>
                 <div>
-                  Open <strong>M-Pesa</strong> &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Buy Goods and Services</strong>.
+                  Open <strong>M-Pesa</strong> &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Paybill</strong>.
                   <div className="mt-1 font-mono font-bold text-emerald-800 dark:text-emerald-300 text-xs">
-                    Till Number: 882190 (FMS Dairy)
+                    Business / Paybill: 522533
                   </div>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-bold text-white">2</span>
                 <div>
-                  Or choose <strong>Paybill: 247247</strong>, Account: <strong className="font-mono">{user?.phone_number || 'FARM-01'}</strong>.
+                  Account Number: <strong className="font-mono text-emerald-800 dark:text-emerald-300">1349921815</strong>
                 </div>
               </div>
               <div className="flex items-start gap-2">

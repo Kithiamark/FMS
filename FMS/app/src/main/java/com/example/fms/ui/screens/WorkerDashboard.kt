@@ -31,7 +31,8 @@ import com.example.fms.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkerDashboard(
-    onNavigateToMilkLog: () -> Unit = {}
+    onNavigateToMilkLog: () -> Unit = {},
+    onNavigateToTasks: () -> Unit = {}
 ) {
     var chores by remember {
         mutableStateOf(
@@ -140,7 +141,7 @@ fun WorkerDashboard(
                             trailingBadge = chore.status.replace("_", " "),
                             badgeColor = statusColor,
                             showChevron = false,
-                            showDivider = index < chores.size - 1,
+                            showDivider = true,
                             onClick = {
                                 val nextStatus = when (chore.status) {
                                     "PENDING" -> "IN_PROGRESS"
@@ -153,6 +154,17 @@ fun WorkerDashboard(
                             }
                         )
                     }
+
+                    InsetRow(
+                        title = "Open Full Task Center",
+                        subtitle = "View Personal To-Dos & Enterprise Chores",
+                        leadingIcon = Icons.Rounded.Assignment,
+                        iconTint = EmeraldPrimary,
+                        iconBackgroundColor = EmeraldPrimary.copy(alpha = 0.12f),
+                        showChevron = true,
+                        showDivider = false,
+                        onClick = onNavigateToTasks
+                    )
                 }
             }
 

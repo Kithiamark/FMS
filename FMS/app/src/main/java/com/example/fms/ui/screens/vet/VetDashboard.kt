@@ -58,7 +58,10 @@ data class ScheduledVisit(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VetDashboard() {
+fun VetDashboard(
+    onNavigateToVisits: () -> Unit = {},
+    onNavigateToFarms: () -> Unit = {}
+) {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Cases/Inquiries, 1: Farm Visits, 2: Drug Withdrawal Tool
 
@@ -212,8 +215,18 @@ fun VetDashboard() {
                         iconTint = ForestGreen,
                         iconBackgroundColor = ForestGreen.copy(alpha = 0.12f),
                         showChevron = true,
-                        showDivider = false,
+                        showDivider = true,
                         onClick = { showRenewIndemnityModal = true }
+                    )
+                    InsetRow(
+                        title = "Client Farm Directory",
+                        subtitle = "View connected dairy farms, herds & health flags",
+                        leadingIcon = Icons.Rounded.Domain,
+                        iconTint = EmeraldPrimary,
+                        iconBackgroundColor = EmeraldPrimary.copy(alpha = 0.12f),
+                        showChevron = true,
+                        showDivider = false,
+                        onClick = onNavigateToFarms
                     )
                 }
             }
@@ -283,6 +296,24 @@ fun VetDashboard() {
 
         // TAB 1: Scheduled Visits
         if (selectedTab == 1) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Clinical Schedules (${scheduledVisits.size})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    TextButton(onClick = onNavigateToVisits) {
+                        Text("Open Full Visits Center ➔", color = EmeraldPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            }
             items(scheduledVisits, key = { it.id }) { visit ->
                 IslandCard(
                     modifier = Modifier

@@ -33,7 +33,11 @@ fun FarmerDashboard(
     onNavigateToRecordMilk: () -> Unit = {},
     onNavigateToAllocation: () -> Unit = {},
     onNavigateToHerd: () -> Unit = {},
-    onNavigateToFinance: () -> Unit = {}
+    onNavigateToFinance: () -> Unit = {},
+    onNavigateToFindBuyer: () -> Unit = {},
+    onNavigateToAlerts: () -> Unit = {},
+    onNavigateToTasks: () -> Unit = {},
+    onNavigateToProduction: () -> Unit = {}
 ) {
     var milkSummary by remember {
         mutableStateOf(
@@ -108,7 +112,17 @@ fun FarmerDashboard(
                         trailingBadge = "100% Balanced",
                         badgeColor = EmeraldPrimary,
                         showChevron = true,
-                        onClick = onNavigateToAllocation
+                        onClick = onNavigateToProduction
+                    )
+                    InsetRow(
+                        title = "Production Analytics & Ledger",
+                        subtitle = "30-day shift yields, curves & allocation ledger",
+                        leadingIcon = Icons.Rounded.Insights,
+                        iconTint = ForestGreen,
+                        iconBackgroundColor = ForestGreen.copy(alpha = 0.12f),
+                        showChevron = true,
+                        showDivider = true,
+                        onClick = onNavigateToProduction
                     )
                     InsetRow(
                         title = "Morning Yield",
@@ -182,8 +196,32 @@ fun FarmerDashboard(
                         iconTint = GoldAmber,
                         iconBackgroundColor = GoldAmber.copy(alpha = 0.12f),
                         showChevron = true,
-                        showDivider = false,
+                        showDivider = true,
                         onClick = onNavigateToFinance
+                    )
+                    InsetRow(
+                        title = "Find Milk Buyers",
+                        subtitle = "Verified cooperatives, chilling hubs & spot rates",
+                        leadingIcon = Icons.Rounded.Storefront,
+                        iconTint = ForestGreen,
+                        iconBackgroundColor = ForestGreen.copy(alpha = 0.12f),
+                        trailingBadge = "KES 54-58/L",
+                        badgeColor = EmeraldPrimary,
+                        showChevron = true,
+                        showDivider = true,
+                        onClick = onNavigateToFindBuyer
+                    )
+                    InsetRow(
+                        title = "Dairy Alerts & Notices",
+                        subtitle = "Withdrawal periods, vaccines, heat cycles",
+                        leadingIcon = Icons.Rounded.NotificationsActive,
+                        iconTint = RoseRed,
+                        iconBackgroundColor = RoseRed.copy(alpha = 0.12f),
+                        trailingBadge = "Active",
+                        badgeColor = GoldAmber,
+                        showChevron = true,
+                        showDivider = false,
+                        onClick = onNavigateToAlerts
                     )
                 }
             }
@@ -243,8 +281,18 @@ fun FarmerDashboard(
                         iconTint = EmeraldPrimary,
                         iconBackgroundColor = EmeraldPrimary.copy(alpha = 0.12f),
                         showChevron = true,
-                        showDivider = false,
+                        showDivider = true,
                         onClick = { showAssignTaskModal = true }
+                    )
+                    InsetRow(
+                        title = "Manage All Tasks & Chores",
+                        subtitle = "Full enterprise chore dispatch and personal to-do list",
+                        leadingIcon = Icons.Rounded.Assignment,
+                        iconTint = ForestGreen,
+                        iconBackgroundColor = ForestGreen.copy(alpha = 0.12f),
+                        showChevron = true,
+                        showDivider = false,
+                        onClick = onNavigateToTasks
                     )
                 }
             }
